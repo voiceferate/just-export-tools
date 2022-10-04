@@ -62,10 +62,10 @@ async function autoScroll(page){
 
     let placesCards =  await page.$$('.hfpxzc');
 
-    // if (placesCards.length > 20) {
-    //   clickPlaceCard(placesCards)
-    //   await page.waitForNetworkIdle();
-    // }
+    if (placesCards.length > 99) {
+      log('too much places cards')
+      return true;
+    }
 
     log.warn(placesCards.length)
 
