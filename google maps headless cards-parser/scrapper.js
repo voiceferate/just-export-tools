@@ -22,10 +22,12 @@ log.start('%s lines done.', 0);
 
 
 (async () => {
-  const browser = await puppeteer.launch({headless: true});
+  const browser = await puppeteer.launch({headless: false});
   const page = await browser.newPage();
   page.setViewport({ width: 1280, height: 600 });
-  await page.goto('https://www.google.com.ua/maps/search/%D1%81%D1%83%D1%88%D1%96+%D0%BA%D0%B0%D0%BB%D1%83%D1%88/@49.0269809,24.3615555,16z/data=!3m1!4b1?')
+
+  // query string
+  await page.goto('https://www.google.com.ua/maps/search/grossery+store/@49.033583,24.3422305,14z/data=!3m1!4b1?hl=uk')
 
   // await page.evaluate(() => {
   //   document.querySelector('button[type=submit]').click();

@@ -26,7 +26,7 @@ const csvWriter = createCsvWriter({
 
 
 
-const file_input_array = fs.readFileSync('src.txt').toString().split("\r\n");
+const file_input_array = fs.readFileSync('src.csv').toString().split("\r\n");
 
 let parsedArray = [];
 
