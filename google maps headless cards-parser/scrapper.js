@@ -8,7 +8,7 @@ var wstream = fs.createWriteStream('parse_result.csv');
 const createCsvStringifier = require('csv-writer').createObjectCsvStringifier;
 const csvStringifier = createCsvStringifier({
     header: [
-        {id: 'company_name', title: 'company_name'},
+        {id: 'name', title: 'name'},
         {id: 'activity', title: 'activity'},
         {id: 'address', title: 'address'},
         {id: 'phone', title: 'phone'},
@@ -27,7 +27,7 @@ log.start('%s lines done.', 0);
   page.setViewport({ width: 1280, height: 600 });
 
   // query string
-  await page.goto('https://www.google.com.ua/maps/search/grossery+store/@49.033583,24.3422305,14z/data=!3m1!4b1?hl=uk')
+  await page.goto('https://www.google.com.ua/maps/search/Grocery+store+Poland+Warsaw/@52.2295748,20.868501,11z/data=!3m1!4b1?hl=uk')
 
   // await page.evaluate(() => {
   //   document.querySelector('button[type=submit]').click();
