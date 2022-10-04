@@ -8,13 +8,13 @@ var wstream = fs.createWriteStream('myOutput.csv');
 const createCsvStringifier = require('csv-writer').createObjectCsvStringifier;
 const csvStringifier = createCsvStringifier({
     header: [
-        {id: 'line_number', title: 'line_number'},
+        // {id: 'line_number', title: 'line_number'},
+        {id: 'query_string', title: 'query_string'},
         {id: 'company_name', title: 'company_name'},
         {id: 'address', title: 'address'},
         {id: 'phone', title: 'phone'},
         {id: 'site', title: 'site'},
         {id: 'altSite', title: 'altSite'},
-        {id: 'query_string', title: 'query_string'}
     ]
   });
 
