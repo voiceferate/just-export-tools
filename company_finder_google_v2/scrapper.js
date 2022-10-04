@@ -14,7 +14,7 @@ const csvStringifier = createCsvStringifier({
         {id: 'address', title: 'address'},
         {id: 'phone', title: 'phone'},
         {id: 'site', title: 'site'},
-        {id: 'altSite', title: 'altSite'},
+        // {id: 'altSite', title: 'altSite'},
     ]
   });
 
@@ -122,7 +122,7 @@ async function openSearchPage() {
           address: delBr(address),
           phone: delBr(phone),
           site: delBr(site),
-          altSite: '',
+          // altSite: '',
           query_string: item
         }]
   
@@ -154,8 +154,8 @@ async function openSearchPage() {
           company_name: '',
           address: '',
           phone: '',
-          site: '',
-          altSite,
+          site: altSite,
+          // altSite,
           query_string: item
         }]
   
