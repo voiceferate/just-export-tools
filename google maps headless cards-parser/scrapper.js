@@ -1,4 +1,3 @@
-// const fs = require('fs');
 const log = require('cllc')();
 const puppeteer = require('puppeteer');
 const fs = require('fs');
@@ -29,15 +28,9 @@ log.start('%s lines done.', 0);
   // query string
   await page.goto('https://www.google.com.ua/maps/search/Grocery+store+Poland+Warsaw/@52.2295748,20.868501,11z/data=!3m1!4b1?hl=uk')
 
-  // await page.evaluate(() => {
-  //   document.querySelector('button[type=submit]').click();
-  // });
-
   await autoScroll(page);
   log.warn('scroll ended')
 
-  const outputInfoArray = [];
-  // const places = await parsePlases(page)
   const placesElemsArray = await page.$$('.hfpxzc');
 
   if (placesElemsArray && placesElemsArray.length) {
@@ -53,7 +46,6 @@ log.start('%s lines done.', 0);
 
 async function autoScroll(page){
     let endOfListSelector =  await page.$('.PbZDve');
-    // log(endOfListSelector);
     
     if (!!endOfListSelector) {
       log('end selector')
@@ -112,18 +104,17 @@ async function parsePlases(page) {
 
 async function handlePlaceClick(placeEl, page) {
   placeEl.click();
-  // log.info(placeEl);
   log.info('clicked');
 
   await page.waitForNetworkIdle();
   await page.waitForSelector('.bJzME.Hu9e2e.tTVLSc')
-  await new Promise(r => setTimeout(r, 1000));
+  await new Promise(r => setTimeout(r, 800));
 
   log.warn(await parsePlaceInfo(page))
 
   await page.click('.VfPpkd-icon-Jh9lGc');
   await page.waitForNetworkIdle();
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise(r => setTimeout(r, 300));
 }
 
 async function parsePlaceInfo(page) {
@@ -167,7 +158,7 @@ async function parsePlaceInfo(page) {
   });
 
   let currentString = [{
-    name,
+    name: name.replace(/,/g, ''),
     activity,
     address,
     phone,
@@ -185,8 +176,4 @@ async function parsePlaceInfo(page) {
     siteUrl
   }
 
-}
-
-async function iteratePlasesCards(page) {
-  let placesCards =  await page.$$('.hfpxzc');
 }
