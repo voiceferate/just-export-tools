@@ -1,4 +1,3 @@
-company_finder_google_v2/src.txt
-company_finder_google_v2/src.csv
-company_finder_google_v2/myOutput.csv
-company_finder_google_v2/myOutput.csv
+*.txt
+*.csv
+*.xlsx
