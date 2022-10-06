@@ -30,7 +30,7 @@ const file_input_array = fs.readFileSync('src.csv').toString().split("\r\n");
 
 let parsedArray = [];
 
-if (keyWordsToCheck.length >= 10) {
+if (keyWordsToCheck.length >= 20) {
   console.log(keyWordsToCheck)
   console.warn('You have entered to much keywords')
   process.exit()
