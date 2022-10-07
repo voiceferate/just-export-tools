@@ -64,7 +64,7 @@ async function openSearchPage() {
       await page.keyboard.press('Enter');
       await page.waitForNavigation({
         waitUntil: ['networkidle2', 'domcontentloaded'],
-        timeout: 10000
+        timeout: 60000
       });
 
       try {
