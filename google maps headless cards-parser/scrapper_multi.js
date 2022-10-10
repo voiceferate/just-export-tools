@@ -21,9 +21,10 @@ log.start('%s lines done.', 0);
 
 function parseInputArray(file) {
   let file_input_array = fs.readFileSync(file).toString().split("\r\n");
-  let preaperedLinks = file_input_array.map((el) => {
-    // additional changes can be done here
-    return el
+  let preaperedLinks = [];
+  file_input_array.forEach((item) => {
+    if (item === "") {return}
+    preaperedLinks.push(item)
   })
   return preaperedLinks
 }
@@ -39,12 +40,16 @@ try {
 
 
 async function parseSingle(query) {
-  const browser = await puppeteer.launch({headless: true});
+  const browser = await puppeteer.launch({headless: false});
   const page = await browser.newPage();
   page.setViewport({ width: 1280, height: 600 });
 
   // query string
-  await page.goto(query)
+  await page.goto(query);
+
+
+  await page.waitForSelector('.Nv2PK.THOPZb.CpccDe', { timeout: 60000 })
+
 
   await autoScroll(page);
   log.warn('scroll ended')

@@ -28,6 +28,8 @@ log.start('%s lines done.', 0);
   // query string
   await page.goto('https://www.google.com.ua/maps/search/%D0%90%D1%85%D0%B0%D0%BB%D1%86%D1%96%D1%85%D0%B5+%D0%BC%D0%B0%D0%B3%D0%B0%D0%B7%D0%B8%D0%BD+%D0%BC%D0%B5%D0%B1%D0%B5%D0%BB%D0%B8/@41.6340688,42.9785434,14z/data=!3m1!4b1?hl=ru')
 
+  await page.waitForSelector('.Nv2PK.THOPZb.CpccDe', { timeout: 60000 })
+
   await autoScroll(page);
   log.warn('scroll ended')
 
