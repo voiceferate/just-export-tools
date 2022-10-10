@@ -167,14 +167,16 @@ async function openSearchPage() {
 
     }
 
+    log.finish('all done')
+    await browser.close()
+
 
   } catch (error) {
     log.error('can`t open new page')
     log.error(error)
   }
 
-  log.finish('all done')
-  await browser.close()
+
 
 }
 
