@@ -94,7 +94,7 @@ async function autoScroll(page){
 
     let placesCards =  await page.$$('.hfpxzc');
 
-    if (placesCards.length > 9) {
+    if (placesCards.length > 99) {
       log('too much places cards')
       return true;
     }
