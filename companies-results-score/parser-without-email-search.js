@@ -68,17 +68,12 @@ file_input_array.forEach(function (currentValue, index, array) {
       keyWordsToCheck.forEach((element,index) => {
         parsedArray[mainIndex].push(chekKeyWord(element, html, 0).toString())
       });
-
-
-      let result = extractEmails(html);
-      parsedArray[mainIndex].push(Array.from(result).join(' : '))
-    })
-    .then(()=>{
+    }).then(()=>{
       // console.log('parsedArray', parsedArray)
       showProgress(parsedArray)
     })
     .catch(error => {
-      console.log('url is not available')
+      console.log('some error happend')
       showProgress(parsedArray)
     });
   });
@@ -92,12 +87,6 @@ function chekKeyWord(word, string, counter) {
     counter++
     return chekKeyWord(word, string.substring(string.indexOf(word)+1), counter)
   }
-}
-
-function extractEmails (input_text)
-{
-    let arr = input_text.match(/([a-zA-Z0-9._-]+@[a-zA-Z._-]+\.[a-zA-Z._-]+)/gi);
-    return new Set(arr);
 }
 
 let progressCounter = 0
