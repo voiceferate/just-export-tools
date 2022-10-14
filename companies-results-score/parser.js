@@ -54,8 +54,8 @@ file_input_array.forEach(function (currentValue, index, array) {
 
   parsedArray.push(currentStr);
 
-  // you can set a column with the site's URL number. count from 0. i.e. fifth column = 4
-  let url = currentStr[4];
+  // you can set a column with the site's URL number. count from 0. i.e. seventh column = 4
+  let url = currentStr[currentStr.length];
 
   if (url !== undefined) {
     if(url.endsWith("/")) {

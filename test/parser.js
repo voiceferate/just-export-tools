@@ -17,7 +17,7 @@ file_input_array.forEach(function (currentValue, index, array) {
       const html = response.data;
       arr.push(html)
 
-      console.log(html)
+      // console.log(html)
 
     }).then(()=>{
       console.log('parsed line');
