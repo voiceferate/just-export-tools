@@ -55,12 +55,13 @@ file_input_array.forEach(function (currentValue, index, array) {
   parsedArray.push(currentStr);
 
   // you can set a column with the site's URL number. count from 0. i.e. seventh column = 4
-  let url = currentStr[currentStr.length];
+  let url = currentStr[currentStr.length-1];
 
   if (url !== undefined) {
     if(url.endsWith("/")) {
       url = url.slice(0, -1)
     }
+    url = url.replace ("http:", 'https:')
   } 
 
   axios(url, {timeout: 60000})
