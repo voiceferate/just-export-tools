@@ -90,40 +90,8 @@ file_input_array.forEach(function (currentValue, index, array) {
       })
       .catch(error => {
         // log.e(new Error(error))
-        let susses = false;
-
-        // #####################################################
-        url = url.replace ("https:", 'http:')
-
-        axios(url, {
-          timeout: 60000,
-          maxRedirects: 10,
-          // httpsAgent: new https.Agent({ keepAlive: true }),
-        })
-          .then(response => {
-            const html = response.data.toLowerCase();
-      
-            keyWordsToCheck.forEach((element,index) => {
-              parsedArray[mainIndex].push(chekKeyWord(element, html, 0).toString())
-            });
-      
-      
-            let result = extractEmails(html);
-            parsedArray[mainIndex].push(Array.from(result).join(' : '))
-            susses = true
-          })
-
-          .catch(error => {
-
-          });
-
-          if(susses) {
-            showProgress(parsedArray);
-          } else {
-            log.step(0, 1);
-          }
-
-          showProgress(parsedArray)
+        log.step(0, 1);
+        showProgress(parsedArray)
       });
 
   
