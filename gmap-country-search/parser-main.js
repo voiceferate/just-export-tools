@@ -3,9 +3,6 @@ const log = require('cllc')();
 const axios = require('axios');
 const fs = require('fs');
 const puppeteer = require('puppeteer');
-
-
-
 const places = require('./countries');
 
 const arguments = process.argv.slice(2)
@@ -25,60 +22,50 @@ if (!places.countriesList.hasOwnProperty(arguments[1].toUpperCase())) {
 const queriesArray = places.makeQueriesArray(arguments)
 log(queriesArray)
 
-
-// function* makeQueriesArrayIterable() {
-//   places.makeQueriesArray(arguments).forEach(element => {
-//     yield 1;
-//   });
-// }
-
-function* foo(index, array) {
+async function openBrowser() {
+  const browser = await puppeteer.launch({headless: false});
+  const page = await browser.newPage();
+  page.setViewport({ width: 1280, height: 600 });
   
-  while (index < 4) {
-    yield array[index];
-    index++;
+  await page.goto("https://www.google.com.ua/maps/?hl=en");
+  await page.waitForSelector('input#searchboxinput', { timeout: 5000 })
+
+  return page;
+
+}
+
+startParse()
+
+async function startParse() {
+  const page = await openBrowser();
+  await page.type('input#searchboxinput', "currentQueryPhrase");
+
+  for (const currentQuery of queriesArray) {
+    await handleSingleQuery(page, currentQuery);
+    log.i("done")
   }
+
 }
 
-const iterator = foo(queriesArray);
-
-console.log(iterator.next());
-// expected output: 0
-
-console.log(iterator.next());
-// expected output: 1
 
 
-async function grabLinks() {
-
-
-
-
-  // const browser = await puppeteer.launch({headless: false});
-  // const page = await browser.newPage();
-  // page.setViewport({ width: 1280, height: 600 });
-
-  // await page.goto("https://www.google.com.ua/maps/?hl=en");
-  
-  // await page.waitForSelector('input#searchboxinput', { timeout: 5000 })
-  
-  // await page.type('input#searchboxinput', item); // Types slower, like a user , {delay: 189}
-  // await page.keyboard.press('Enter');
-  // await page.waitForNavigation({
-  //   waitUntil: ['networkidle2', 'domcontentloaded'],
-  //   timeout: 60000
-  // });
-
-  // for await (const item of makeQueriesArrayIterable()) {
-  //   console.log(item);
-  //   // expected output: 1
-
-    
+async function handleSingleQuery (page, item) {
+  // if (currentQueryPhrase === false) {
+  //   log.info("done scroll");
+  //   return false;
   // }
+  // const page = outerPage;
+
+  await page.type('input#searchboxinput', ""); // Types slower, like a user , {delay: 189}
+  await page.type('input#searchboxinput', item); // Types slower, like a user , {delay: 189}
+  await page.keyboard.press('Enter');
+  await page.waitForNavigation({
+    waitUntil: ['networkidle2', 'domcontentloaded'],
+    timeout: 60000
+  });
 
 }
 
-grabLinks();
 
 // якась магіябизібрати лінки
 let gmapsPlacesLinksArray = [
@@ -125,6 +112,19 @@ function placesLinksIterator(array) {
   // log.info(array[currentIteratorStep-1]);
   return array[currentIteratorStep - 1]
 }
+
+// let currentScrollIteratorStep = 0;
+
+// function scrollLinksIterator(array) {
+//   if (currentScrollIteratorStep === array.length) {
+//     log.debug('links gathering finished');
+//     return false;
+//   }
+
+//   ++currentScrollIteratorStep
+
+//   return array[currentScrollIteratorStep - 1]
+// }
 
 async function parseLink(url) {
   if (url === false) {
