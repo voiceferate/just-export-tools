@@ -1,28 +1,28 @@
 const { exit } = require('process');
 const log = require('cllc')();
 const axios = require('axios');
-const fs = require('fs');
 const puppeteer = require('puppeteer');
 const places = require('./countries');
+// const fs = require('fs');
 
 const arguments = process.argv.slice(2)
-
 if (arguments.length == 0 || arguments.length !== 2) {
   log.e('arguments empty or has a wrong format');
   exit();
 }
-
 if (!places.countriesList.hasOwnProperty(arguments[1].toUpperCase())) {
   log.e('you have entered nonexistent country shortname');
   exit();
 }
 
 // масив запитів для перебору
-
 const queriesArray = places.makeQueriesArray(arguments)
 log(queriesArray)
 
-async function openBrowser() {
+
+
+
+async function startParse() {
   const browser = await puppeteer.launch({headless: false});
   const page = await browser.newPage();
   page.setViewport({ width: 1280, height: 600 });
@@ -30,44 +30,81 @@ async function openBrowser() {
   await page.goto("https://www.google.com.ua/maps/?hl=en");
   await page.waitForSelector('input#searchboxinput', { timeout: 5000 })
 
-  return page;
-
-}
-
-startParse()
-
-async function startParse() {
-  const page = await openBrowser();
-  await page.type('input#searchboxinput', "currentQueryPhrase");
-
   for (const currentQuery of queriesArray) {
     await handleSingleQuery(page, currentQuery);
-    log.i("done")
+    log.warn(currentQuery)
   }
-
+  log.debug('done all');
 }
 
 
 
 async function handleSingleQuery (page, item) {
-  // if (currentQueryPhrase === false) {
-  //   log.info("done scroll");
-  //   return false;
-  // }
-  // const page = outerPage;
-
-  await page.type('input#searchboxinput', ""); // Types slower, like a user , {delay: 189}
-  await page.type('input#searchboxinput', item); // Types slower, like a user , {delay: 189}
+  // handle keyboard input
+  await page.focus('input#searchboxinput');
+  await page.keyboard.down('Control');
+  await page.keyboard.press('A');
+  await page.keyboard.up('Control');
+  await page.keyboard.press('Backspace');
+  await page.type('input#searchboxinput', item); 
   await page.keyboard.press('Enter');
-  await page.waitForNavigation({
-    waitUntil: ['networkidle2', 'domcontentloaded'],
-    timeout: 60000
+
+  await page.waitForSelector('.m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd', { timeout: 60000 })
+
+  await autoScroll(page);
+
+  await page.evaluate(() => {
+    const links = document.querySelectorAll(".hfpxzc");
+    let linksURIs
+    links.forEach((el) => {
+      console.log(el.href)
+    });
   });
+  log.i("done single")
+
 
 }
 
+async function autoScroll(page){
+  let endOfListSelector =  await page.$('.PbZDve');
+  
+  if (!!endOfListSelector) {
+    log('end selector')
+    return true;
+  }
 
-// якась магіябизібрати лінки
+  let placesCards =  await page.$$('.hfpxzc');
+
+  if (placesCards.length > 25) {
+    log('too much places cards')
+    return true;
+  }
+
+  log.warn(placesCards.length)
+
+  new Promise(r => setTimeout(r, 500));
+
+  await page.evaluate(() => {
+    const scrollElem = document.querySelectorAll('.m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd')[1];
+    scrollElem.scrollTop = scrollElem.scrollTop - 300;
+  })
+  
+  await page.waitForNetworkIdle();
+
+  await page.evaluate(() => {
+    document.querySelectorAll('.m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd')[1].scrollTop = 100000
+  })
+
+  await page.waitForNetworkIdle();
+  await autoScroll(page)
+
+}
+
+startParse()
+
+
+
+// якась магія би зібрати лінки
 let gmapsPlacesLinksArray = [
   // "https://www.google.com.ua/maps/place/%C2%AB%D0%9D%D0%B0+%D0%9C%D0%BE%D1%81%D1%82%D0%B8%D1%81%D1%8C%D0%BA%D1%96%D0%B9%C2%BB/data=!4m7!3m6!1s0x4730a3352e68e59d:0x5491b9c59d3c3880!8m2!3d49.0463591!4d24.3617038!16s%2Fg%2F11gydh3vy6!19sChIJneVoLjWjMEcRgDg8ncW5kVQ?authuser=0&hl=uk&rclk=1",
   // "https://www.google.com.ua/maps/place/Palermo/data=!4m7!3m6!1s0x4730a25bd7fc8f1f:0x22d6747b175b5b3d!8m2!3d49.031277!4d24.3601277!16s%2Fg%2F11clsh9_rv!19sChIJH4_811uiMEcRPVtbF3t01iI?authuser=0&hl=uk&rclk=1",
@@ -113,32 +150,9 @@ function placesLinksIterator(array) {
   return array[currentIteratorStep - 1]
 }
 
-// let currentScrollIteratorStep = 0;
-
-// function scrollLinksIterator(array) {
-//   if (currentScrollIteratorStep === array.length) {
-//     log.debug('links gathering finished');
-//     return false;
-//   }
-
-//   ++currentScrollIteratorStep
-
-//   return array[currentScrollIteratorStep - 1]
-// }
-
 async function parseLink(url) {
   if (url === false) {
     log.debug('exit');
-
-    // log.debug(resp.toString())
-
-    // fs.writeFileSync('resp1111.txt', resp, err => {
-    //   if (err) {
-    //     console.error(err);
-    //   }
-    //   // file written successfully
-    // });
-
     exit();
   }
 
@@ -159,9 +173,6 @@ async function parseLink(url) {
 
   await parseLink(placesLinksIterator(gmapsPlacesLinksArray))
 }
-
-
-
 
 
 

@@ -1,3 +1,4 @@
 *.txt
 *.csv
 *.xlsx
+/node_modules
