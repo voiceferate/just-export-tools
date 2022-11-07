@@ -152,7 +152,7 @@ async function autoScroll(page) {
 
 function placesLinksIterator(array) {
   if (currentIteratorStep === array.length) {
-    log.debug('process finished succesfully');
+    log.warn('process finished succesfully');
     return false;
   }
 
@@ -164,7 +164,7 @@ function placesLinksIterator(array) {
 
 async function parseLinks(url) {
   if (url === false) {
-    log.debug('exit');
+    log.info('exit');
     exit();
   }
 
