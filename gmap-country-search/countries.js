@@ -8,7 +8,7 @@ module.exports = {
   makeQueriesArray: (arg) => {
     let arr = []
     places[arg[1].toUpperCase()].forEach(element => {
-      arr.push(`${arg[0]} at ${element[1]}, ${element[0]}`)
+      arr.push(`${arg[0]}, ${element[1]}, ${element[0]}`)
     });
     return arr;
   }

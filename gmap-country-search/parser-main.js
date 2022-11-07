@@ -24,7 +24,7 @@ const parseResultWriter = createCsvWriter({
 
 
 const arguments = process.argv.slice(2)
-if (arguments.length == 0 || arguments.length !== 2) {
+if (arguments.length == 0 || arguments.length > 3) {
   log.e('arguments empty or has a wrong format');
   exit();
 }
@@ -32,6 +32,8 @@ if (!places.countriesList.hasOwnProperty(arguments[1].toUpperCase())) {
   log.e('you have entered nonexistent country shortname');
   exit();
 }
+
+const scrollCardsAmount = arguments[2] || 40;
 
 // масив запитів для перебору
 const queriesArray = places.makeQueriesArray(arguments)
@@ -66,6 +68,7 @@ async function startParse(placesArray) {
   await browser.close();
 
   parseLinks(placesLinksIterator(parsedPlacesLinks))
+  log.start(`lines total: ${parsedPlacesLinks.length}\nlines done [%s]`, 1);
 
 }
 
@@ -120,7 +123,7 @@ async function autoScroll(page) {
 
   let placesCards = await page.$$('.hfpxzc');
 
-  if (placesCards.length > 55) {
+  if (placesCards.length > scrollCardsAmount) {
     log('too much places cards')
     return true;
   }
@@ -154,7 +157,8 @@ function placesLinksIterator(array) {
   }
 
   ++currentIteratorStep
-  // log.info(array[currentIteratorStep-1]);
+
+  log.step(1);
   return array[currentIteratorStep - 1]
 }
 
@@ -166,17 +170,13 @@ async function parseLinks(url) {
 
   await axios(url)
     .then(async response => {
-      log.info(response.status)
+      log(response.status)
 
-      // handleResponseData(response.data)
-
-      //returns data array
-      // log.info(handleResponseData(response.data))
       let currentResult = [handleResponseData(response.data)];
 
       await parseResultWriter.writeRecords(currentResult)
-      log.info(currentResult)
-      log.info('current line written')
+      // log.info(currentResult)
+      log.debug('current line written')
     })
     .catch(error => {
       log.error(error)
@@ -190,23 +190,35 @@ function handleResponseData(data) {
   const currentLine = {}
 
 
-
   const infoStrEnd = data.indexOf('itemprop="name">');
   const infoStrStart = data.lastIndexOf('<meta content=', infoStrEnd);
   let infoStr = data.slice(infoStrStart + 15, infoStrEnd - 2);
 
-  infoStr = infoStr.split(' · ');
-  currentLine.name = infoStr[0];
-  currentLine.address = infoStr[1];
+  if (infoStr.indexOf(" · ") > 0) {
+    infoStr = infoStr.split(' · ');
+    currentLine.name = infoStr[0].replace(',', '');
+    currentLine.address = infoStr[1].replace(',', '');
+  } else {
+    currentLine.name = infoStr.replace(',', '');
+    currentLine.address = "null";
+  }
+
+
 
   const activityStrEnd = data.indexOf('itemprop="description">');
   const activityStrStart = data.lastIndexOf('<meta content=', activityStrEnd)
-  let activity = data.slice(activityStrStart + 15, activityStrEnd - 2);
-  if (activity.indexOf(' · ') > 0) {
-    activity = activity.slice(8)
+
+  if (activityStrEnd !== -1) {
+    let activity = data.slice(activityStrStart + 15, activityStrEnd - 2);
+    if (activity.indexOf(' · ') > 0) {
+      activity = activity.slice(8)
+    }
+  
+    currentLine.activity = activity.replace(',', '');
+  } else {
+    currentLine.activity = 'null';
   }
 
-  currentLine.activity = activity;
 
   const phoneStrStart = data.indexOf('tel:')
   const phoneStrEnd = data.indexOf('",', phoneStrStart);
@@ -215,26 +227,6 @@ function handleResponseData(data) {
   } else {
     currentLine.phone = 'null';
   }
-
-
-
-  //то до пізди. треба шукати від зворотнього. відкидати всі лінки які гугл і службові, лишиться один
-  
-  // ######### перща версія
-
-  // const siteStrStart = data.indexOf(`],null,null,[\\"/url?q\\\\u003dhttp`)
-  // const siteStrEnd = data.indexOf(`u0026sa`, siteStrStart);
-  // if (siteStrStart !== -1) {
-  //   try {
-  //     currentLine.site = data.slice(siteStrStart + 28, siteStrEnd - 2)
-  //     currentLine.site = decodeURIComponent(currentLine.site);
-  //     currentLine.site = decodeURIComponent(currentLine.site);
-  //   } catch (error) {
-  //     log.error(error)
-  //   }
-  // } else {
-  //   currentLine.site = 'null';
-  // }
 
 
   const httpRegexG = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
