@@ -14,12 +14,12 @@ const csvWriter = createCsvWriter({
 const parseResultWriter = createCsvWriter({
   path: 'full-result.csv',
   header: [
-    {id: 'name', title: 'name'},
-    {id: 'activity', title: 'activity'},
-    {id: 'address', title: 'address'},
-    {id: 'phone', title: 'phone'},
-    {id: 'site', title: 'site'},
-]
+    { id: 'name', title: 'name' },
+    { id: 'activity', title: 'activity' },
+    { id: 'address', title: 'address' },
+    { id: 'phone', title: 'phone' },
+    { id: 'site', title: 'site' },
+  ]
 });
 
 
@@ -85,23 +85,83 @@ async function handleSingleQuery(page, item) {
   await page.keyboard.press('Enter');
 
   await page.waitForSelector('.m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd', { timeout: 60000 }).then(async () => {
-    await autoScroll(page);
 
-    const URIs = await page.evaluate(() => {
-      const links = document.querySelectorAll(".hfpxzc");
-      let linksURIs = [];
+    try {
+      await autoScroll(page);
+    } catch (error) {
+      log.error('scroll error \n', error)
+    }
 
-      links.forEach((el) => {
-        linksURIs.push({ "URL": el.href });
+    if (await page.$(".lcr4fd.S9kvJb") !== null) {
+      log.warn('has shortcards')
+
+      const cardsData = await page.evaluate(() => {
+
+        let cardsArray = []
+        document.querySelectorAll('.Nv2PK.THOPZb').forEach(function (elem) {
+          const output = {}
+
+          output.name = elem.ariaLabel
+
+          let activity = elem.querySelector(".Z8fK3b .W4Efsd .W4Efsd:nth-child(2) span:first-child jsl span:nth-child(2)")
+          if (activity !== null) {
+            output.activity = activity.textContent.replace(/,/g, ".")
+          } else {
+            output.activity = "null"
+          }
+
+          let company_address = elem.querySelector(".Z8fK3b .W4Efsd .W4Efsd:nth-child(2) span:nth-child(2) jsl span:nth-child(2)")
+          if (company_address !== null) {
+            output.address = company_address.textContent.replace(/,/g, ".")
+          } else {
+            output.address = "null"
+          }
+
+          let phone = elem.querySelector(".Z8fK3b .W4Efsd .W4Efsd:nth-child(3) span:nth-child(2) jsl span:nth-child(2)")
+          if (phone !== null) {
+            output.phone = phone.textContent.replace(/,/g, ".")
+          } else {
+            output.phone = "null"
+          }
+
+          let site_link = elem.querySelector(".Rwjeuc a")
+          if (site_link !== null) {
+            output.site = site_link.href
+          } else {
+            output.site = "null"
+          }
+
+          cardsArray.push(output)
+        })
+
+        return cardsArray
+
       });
-      return linksURIs;
-    });
 
-    URIs.forEach(el => {
-      parsedPlacesLinks.push(el["URL"]);
-    })
+      await parseResultWriter.writeRecords(cardsData)
 
-    await csvWriter.writeRecords(URIs)
+    }
+    else {
+      log.warn('standart flow');
+
+      const URIs = await page.evaluate(() => {
+        const links = document.querySelectorAll(".hfpxzc");
+        let linksURIs = [];
+
+        links.forEach((el) => {
+          linksURIs.push({ "URL": el.href });
+        });
+        return linksURIs;
+      });
+
+      URIs.forEach(el => {
+        parsedPlacesLinks.push(el["URL"]);
+      })
+
+      await csvWriter.writeRecords(URIs)
+    };
+
+
 
     log.i("done single")
   }).catch(e => {
@@ -213,7 +273,7 @@ function handleResponseData(data) {
     if (activity.indexOf(' · ') > 0) {
       activity = activity.slice(8)
     }
-  
+
     currentLine.activity = activity.replace(',', '');
   } else {
     currentLine.activity = 'null';
@@ -242,7 +302,7 @@ function handleResponseData(data) {
   });
   result = new Set(result);
 
-  if (result.size === 0 ) {
+  if (result.size === 0) {
     currentLine.site = 'null';
   } else {
     currentLine.site = Array.from(result)[0];
