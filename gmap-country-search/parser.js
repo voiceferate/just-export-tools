@@ -33,6 +33,10 @@ if (!places.countriesList.hasOwnProperty(arguments[1].toUpperCase())) {
   exit();
 }
 
+if (arguments[2] && !Number.isInteger(+arguments[2])) {
+  log.e('third argument is not a number');
+  exit();
+}
 const scrollCardsAmount = arguments[2] || 40;
 
 // масив запитів для перебору
@@ -62,7 +66,7 @@ async function startParse(placesArray) {
     } catch (error) {
       log.error(`throuble on ${currentQuery},\n`, error)
     }
-    log.warn(currentQuery)
+    log(currentQuery)
   }
   log.debug('done all scrolling');
   await browser.close();
@@ -93,7 +97,7 @@ async function handleSingleQuery(page, item) {
     }
 
     if (await page.$(".lcr4fd.S9kvJb") !== null) {
-      log.warn('has shortcards')
+      log.debug('has shortcards')
 
       const cardsData = await page.evaluate(() => {
 
@@ -142,7 +146,7 @@ async function handleSingleQuery(page, item) {
 
     }
     else {
-      log.warn('standart flow');
+      log('standart flow');
 
       const URIs = await page.evaluate(() => {
         const links = document.querySelectorAll(".hfpxzc");
@@ -163,7 +167,7 @@ async function handleSingleQuery(page, item) {
 
 
 
-    log.i("done single")
+    log.info("done single")
   }).catch(e => {
     log('FAIL');
     log.error(`fail on ${item} query,\n`, e)
