@@ -39,26 +39,17 @@ const fs = require('fs');
 
     async function getRootUrl(array) {
 
-      await array.forEach(async el => {
+
+      for (let index = 0; index < array.length; index++) {
+        const el = array[index]
         const rootURL = el[el.length - 2];
+        const urlsList = await getLinksFromRoot(rootURL)
+        log.info(urlsList)
 
-        // const response = await axios.get(url);
 
-        await axios.get(rootURL)
-          .then(function (response) {
-            // console.log(response.data);
-            console.log(response.status);
-            console.log(response.statusText);
-            // console.log(response.headers);
-            // console.log(response.config);
-          })
-          .catch(function (error) {
-            // log.error(error);
-            log.warn("axios get error")
-            log.warn(error.message)
+      }
 
-          });
-      })
+
 
       log.warn("ALL DONE")
 
@@ -69,6 +60,16 @@ const fs = require('fs');
 
     } catch (error) {
       log.error(error);
+    }
+
+    async function getLinksFromRoot(url) {
+      try {
+        const res = await axios.get(url);
+        return res.status
+      } catch (error) {
+        log.warn(`cant get ${url}`)
+        return []
+      }
     }
 
 
@@ -123,7 +124,7 @@ const fs = require('fs');
       return inputArray
     }
   } catch (e) {
-      log.error(e);
+    log.error(e);
   }
 })();
 
