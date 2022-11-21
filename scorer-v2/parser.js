@@ -1,47 +1,136 @@
 const axios = require('axios');
 const log = require('cllc')();
 const fs = require('fs');
-const https = require('https');
-
-
-let keyWordsToCheck = process.argv.slice(2);
-keyWordsToCheck = keyWordsToCheck.map((element) => {
-  return element.toLowerCase();
-})
-
-if (keyWordsToCheck.length >= 30) {
-  log(keyWordsToCheck)
-  log.warn('You have entered to much keywords')
-  process.exit()
-} else if (keyWordsToCheck.length === 0) {
-  log(keyWordsToCheck)
-  log.warn('You haven`t entered any keywords')
-  process.exit()
-}
 
 
 
-log.info(parseInputData('src.csv'))
+(async () => {
+  try {
+    let keyWordsToCheck = process.argv.slice(2);
+    keyWordsToCheck = keyWordsToCheck.map((element) => {
+      return element.toLowerCase();
+    })
 
-
-
-function parseInputData (file) {
-  let inputArray = fs.readFileSync(file).toString().split("\r\n");
-
-  inputArray = inputArray.map(function (line) {
-    const currentStr = delBr(line).split(',');
-
-    const regex = /(http.*:\/\/[\w\._-]+)/g;
-    let urlEl = currentStr[currentStr.length - 1];
-    const matches = urlEl.matchAll(regex);
-    for (const match of matches) {
-      currentStr[currentStr.length - 1] = match[0] + "/";
+    if (keyWordsToCheck.length >= 30) {
+      log(keyWordsToCheck)
+      log.warn('You have entered to much keywords')
+      process.exit()
+    } else if (keyWordsToCheck.length === 0) {
+      log(keyWordsToCheck)
+      log.warn('You haven`t entered any keywords')
+      process.exit()
     }
 
-    return currentStr;
-  })
-  return inputArray
-}
+    const inputFileParsed = parseInputData('src.csv')
+    let resultArray = []
+
+
+    // підготовка даних для перебору
+    try {
+      handleFirstRowForOutputArray()
+      while (inputFileParsed.length > 0) {
+        checkUrlExistanceInArray(inputFileParsed, resultArray)
+      }
+    } catch (error) {
+      log.error("виникла помилка при розборі даних для аналізу\n", error)
+    }
+
+    log.d("resultArray", resultArray)
+
+    async function getRootUrl(array) {
+
+      await array.forEach(async el => {
+        const rootURL = el[el.length - 2];
+
+        // const response = await axios.get(url);
+
+        await axios.get(rootURL)
+          .then(function (response) {
+            // console.log(response.data);
+            console.log(response.status);
+            console.log(response.statusText);
+            // console.log(response.headers);
+            // console.log(response.config);
+          })
+          .catch(function (error) {
+            // log.error(error);
+            log.warn("axios get error")
+            log.warn(error.message)
+
+          });
+      })
+
+      log.warn("ALL DONE")
+
+    }
+
+    try {
+      await getRootUrl(resultArray)
+
+    } catch (error) {
+      log.error(error);
+    }
+
+
+    function checkUrlExistanceInArray(inputArr, outputArr) {
+
+      const currentRowIndex = inputArr.length - 1
+      const currentRowArray = inputArr[currentRowIndex];
+      let findMach = false
+
+      outputArr.forEach((element) => {
+
+        const innerURL = currentRowArray[currentRowArray.length - 1]
+        const outerURL = element[element.length - 2]
+
+        if (innerURL === outerURL) {
+          element[element.length - 1]++
+          inputArr.splice(currentRowIndex, 1)
+          findMach = true
+        }
+      });
+
+      if (!findMach) {
+        let newUrlEl = currentRowArray
+        newUrlEl.push(1)
+        outputArr.push(newUrlEl)
+        inputArr.splice(currentRowIndex, 1)
+      }
+    }
+
+    function handleFirstRowForOutputArray() {
+      const newEl = inputFileParsed[0]
+      newEl.push(1)
+      resultArray.push(newEl)
+      inputFileParsed.splice(0, 1)
+    }
+
+    function parseInputData(file) {
+      let inputArray = fs.readFileSync(file).toString().split("\r\n");
+
+      inputArray = inputArray.map(function (line) {
+        const currentStr = delBr(line).split(',');
+
+        const regex = /(http.*:\/\/[\w\._-]+)/g;
+        let urlEl = currentStr[currentStr.length - 1];
+        const matches = urlEl.matchAll(regex);
+        for (const match of matches) {
+          currentStr[currentStr.length - 1] = match[0] + "/";
+        }
+
+        return currentStr;
+      })
+      return inputArray
+    }
+  } catch (e) {
+      log.error(e);
+  }
+})();
+
+
+
+
+
 
 
 
@@ -114,12 +203,12 @@ function parseInputData (file) {
 // //     })
 // //       .then(response => {
 // //         const html = response.data.toLowerCase();
-  
+
 // //         keyWordsToCheck.forEach((element,index) => {
 // //           parsedArray[mainIndex].push(chekKeyWord(element, html, 0).toString())
 // //         });
-  
-  
+
+
 // //         let result = extractEmails(html);
 // //         parsedArray[mainIndex].push(Array.from(result).join(' : '))
 // //       })
@@ -140,12 +229,12 @@ function parseInputData (file) {
 // //         })
 // //           .then(response => {
 // //             const html = response.data.toLowerCase();
-      
+
 // //             keyWordsToCheck.forEach((element,index) => {
 // //               parsedArray[mainIndex].push(chekKeyWord(element, html, 0).toString())
 // //             });
-      
-      
+
+
 // //             let result = extractEmails(html);
 // //             parsedArray[mainIndex].push(Array.from(result).join(' : '))
 // //             susses = true
@@ -164,7 +253,7 @@ function parseInputData (file) {
 // //           showProgress(parsedArray)
 // //       });
 
-  
+
 // //   });
 
 
@@ -207,5 +296,5 @@ function parseInputData (file) {
 // }
 
 
-function delBrLink (s) {return s.replace (/\s{1,}/g, '')};
-function delBr (s) {return s.replace (/\s{2,}/g, ' ')};
+function delBrLink(s) { return s.replace(/\s{1,}/g, '') };
+function delBr(s) { return s.replace(/\s{2,}/g, ' ') };
