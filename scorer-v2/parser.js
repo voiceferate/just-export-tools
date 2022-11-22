@@ -44,9 +44,25 @@ const fs = require('fs');
         const el = array[index]
         const rootURL = el[el.length - 2];
         const urlsList = await getLinksFromRoot(rootURL)
+
+
+
+        if (urlsList.length > 0) {
+          for (let index = 0; index < urlsList.length && index < 15; index++) {
+            
+            log.d("urlsList", urlsList[index])
+
+            // робити це через йобані регулярки
+            // let regex = /франція/gi
+            // str.match(regex)
+
+          }
+        }
+
+
+
+
         log.info(urlsList)
-
-
       }
 
 
@@ -65,7 +81,25 @@ const fs = require('fs');
     async function getLinksFromRoot(url) {
       try {
         const res = await axios.get(url);
-        return res.status
+        
+        const httpRegexG = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
+        
+        const domainRegex = /https?:\/\/(?:www\.)?([-a-zA-Z0-9@:%._\+~#=]{1,256})\./
+        const domain = url.match(domainRegex)[1];
+        
+        let linksArray = res.data.match(httpRegexG);
+
+        let result = linksArray.filter(link => {
+          if ( 
+            link.charAt(link.length-1) !== '/' 
+            ||!link.includes(domain) 
+          ) {return false};
+
+          return true;
+        });
+        
+        return Array.from(new Set(result))
+
       } catch (error) {
         log.warn(`cant get ${url}`)
         return []
@@ -127,7 +161,6 @@ const fs = require('fs');
     log.error(e);
   }
 })();
-
 
 
 
