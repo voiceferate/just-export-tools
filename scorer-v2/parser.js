@@ -2,6 +2,7 @@ const axios = require('axios');
 const log = require('cllc')();
 const fs = require('fs');
 
+const createCsvWriter = require('csv-writer').createArrayCsvWriter;
 
 
 (async () => {
@@ -22,6 +23,17 @@ const fs = require('fs');
 
     const inputFileParsed = parseInputData('src.csv')
     let resultArray = []
+
+    let headerValuesArray = []
+    
+    headerValuesArray.push(...inputFileParsed[0])
+    headerValuesArray.push("popularity")
+    headerValuesArray.push(...keyWordsToCheck)
+    
+    const csvWriter = createCsvWriter({
+      path: 'data.csv',
+      header: headerValuesArray
+    });
 
 
     // підготовка даних для перебору
@@ -59,43 +71,41 @@ const fs = require('fs');
         const urlsList = await getLinksFromRoot(rootURL)
 
         if (urlsList.length > 0) {
+
           // перебір кожного із знайдених лінків
           for (let index = 0; index < urlsList.length && index < 10; index++) {
-            
             const url = urlsList[index]
             const res = await axios.get(url);
 
             if (res.status < 200 && res.staus > 300 || typeof res.data !== "string") {
-              log.error("bad response")
+              log.error("bad response");
+              log.debug('request to', rootURL)
             } else {
               // перебираємо кожне з клюлчових слів
               keyWordsToCheck.forEach((keyword, index) => {
-                // log.d('res.status', res.status)
-                // log.d('typeof res.data', typeof res.data)
-                // log.d('res.data', res.data)
+
                 const foundKeywordsNumber = countKeywords(res.data, keyword)
-
-                // log.info(`countKeywords amount for ${keyword} \n url: ${url}`, foundKeywordsNumber)
-
-                // log.debug('keywordCountValue', currentLineKeywordsResult[index])
-                // log.debug('found value', foundKeywordsNumber)
-
                 currentLineKeywordsResult[index] += foundKeywordsNumber
 
               })
             }
+            // log.debug('res.status', res.status)
           }
-
-          // log.info(`currentLineKeywordsResult for ${rootURL}`, currentLineKeywordsResult)
 
           currentLineKeywordsResult.forEach(elem => {
             el.push(elem)
           })
+          log.info(`result for ${rootURL}`, currentLineKeywordsResult)
+
+          await csvWriter.writeRecords([el])
+
         } else {
           el.push('url is not awaliable')
+
+          await csvWriter.writeRecords([el])
         }
 
-        log.info("output", array)
+        // log.info("output", array)
       }
 
 
@@ -138,7 +148,7 @@ const fs = require('fs');
         return Array.from(new Set(result))
 
       } catch (error) {
-        log.warn(`cant get ${url} \n`)
+        log.warn(`cant get ${url}`)
         // log.error(error)
         return []
       }
@@ -174,7 +184,7 @@ const fs = require('fs');
     function handleFirstRowForOutputArray() {
       let newEl = []
       newEl.length = inputFileParsed[1].length
-      newEl.splice(inputFileParsed[1].length,0,...keyWordsToCheck)
+      newEl.splice(inputFileParsed[1].length,0, "popularity",...keyWordsToCheck)
 
       // newEl.push(1)
       resultArray.push(newEl)
