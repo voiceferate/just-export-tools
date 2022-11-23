@@ -5,7 +5,6 @@ const fs = require('fs');
 
 
 (async () => {
-  try {
     let keyWordsToCheck = process.argv.slice(2);
     keyWordsToCheck = keyWordsToCheck.map((element) => {
       return element.toLowerCase();
@@ -28,6 +27,7 @@ const fs = require('fs');
     // підготовка даних для перебору
     try {
       handleFirstRowForOutputArray()
+
       while (inputFileParsed.length > 0) {
         checkUrlExistanceInArray(inputFileParsed, resultArray)
       }
@@ -35,34 +35,67 @@ const fs = require('fs');
       log.error("виникла помилка при розборі даних для аналізу\n", error)
     }
 
-    log.d("resultArray", resultArray)
 
-    async function getRootUrl(array) {
+    try {
+      await handleKeywordsCount(resultArray)
 
+    } catch (error) {
+      log.error(error);
+    }
 
-      for (let index = 0; index < array.length; index++) {
-        const el = array[index]
+    async function handleKeywordsCount(array) {
+
+      //перебір головного масиву з даними
+      // skip first line
+      for (let index = 1; index < array.length; index++) {
+        let el = array[index]
         const rootURL = el[el.length - 2];
+
+        let currentLineKeywordsResult = [];
+        keyWordsToCheck.forEach((keyword, index) => {
+          currentLineKeywordsResult[index] = 0
+        })
+
         const urlsList = await getLinksFromRoot(rootURL)
 
-
-
         if (urlsList.length > 0) {
-          for (let index = 0; index < urlsList.length && index < 15; index++) {
+          // перебір кожного із знайдених лінків
+          for (let index = 0; index < urlsList.length && index < 10; index++) {
             
-            log.d("urlsList", urlsList[index])
+            const url = urlsList[index]
+            const res = await axios.get(url);
 
-            // робити це через йобані регулярки
-            // let regex = /франція/gi
-            // str.match(regex)
+            if (res.status < 200 && res.staus > 300 || typeof res.data !== "string") {
+              log.error("bad response")
+            } else {
+              // перебираємо кожне з клюлчових слів
+              keyWordsToCheck.forEach((keyword, index) => {
+                // log.d('res.status', res.status)
+                // log.d('typeof res.data', typeof res.data)
+                // log.d('res.data', res.data)
+                const foundKeywordsNumber = countKeywords(res.data, keyword)
 
+                // log.info(`countKeywords amount for ${keyword} \n url: ${url}`, foundKeywordsNumber)
+
+                // log.debug('keywordCountValue', currentLineKeywordsResult[index])
+                // log.debug('found value', foundKeywordsNumber)
+
+                currentLineKeywordsResult[index] += foundKeywordsNumber
+
+              })
+            }
           }
+
+          // log.info(`currentLineKeywordsResult for ${rootURL}`, currentLineKeywordsResult)
+
+          currentLineKeywordsResult.forEach(elem => {
+            el.push(elem)
+          })
+        } else {
+          el.push('url is not awaliable')
         }
 
-
-
-
-        log.info(urlsList)
+        log.info("output", array)
       }
 
 
@@ -71,12 +104,16 @@ const fs = require('fs');
 
     }
 
-    try {
-      await getRootUrl(resultArray)
-
-    } catch (error) {
-      log.error(error);
+    // return numbers array
+    function countKeywords(reqText,keyword) {
+      const regex = new RegExp( keyword, 'g' );
+      if (reqText.match(regex) !== null) {
+        return reqText.match(regex).length
+      } else {
+        return 0
+      }
     }
+
 
     async function getLinksFromRoot(url) {
       try {
@@ -101,7 +138,8 @@ const fs = require('fs');
         return Array.from(new Set(result))
 
       } catch (error) {
-        log.warn(`cant get ${url}`)
+        log.warn(`cant get ${url} \n`)
+        // log.error(error)
         return []
       }
     }
@@ -134,10 +172,14 @@ const fs = require('fs');
     }
 
     function handleFirstRowForOutputArray() {
-      const newEl = inputFileParsed[0]
-      newEl.push(1)
+      let newEl = []
+      newEl.length = inputFileParsed[1].length
+      newEl.splice(inputFileParsed[1].length,0,...keyWordsToCheck)
+
+      // newEl.push(1)
       resultArray.push(newEl)
-      inputFileParsed.splice(0, 1)
+      log.warn("first line", resultArray[0])
+      // inputFileParsed.splice(0, 1)
     }
 
     function parseInputData(file) {
@@ -157,9 +199,7 @@ const fs = require('fs');
       })
       return inputArray
     }
-  } catch (e) {
-    log.error(e);
-  }
+
 })();
 
 
