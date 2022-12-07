@@ -6,209 +6,228 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
 
 
 (async () => {
-    let keyWordsToCheck = process.argv.slice(2);
-    keyWordsToCheck = keyWordsToCheck.map((element) => {
-      return element.toLowerCase();
-    })
+  let keyWordsToCheck = process.argv.slice(2);
+  keyWordsToCheck = keyWordsToCheck.map((element) => {
+    return element.toLowerCase();
+  })
 
-    if (keyWordsToCheck.length >= 30) {
-      log(keyWordsToCheck)
-      log.warn('You have entered to much keywords')
-      process.exit()
-    } else if (keyWordsToCheck.length === 0) {
-      log(keyWordsToCheck)
-      log.warn('You haven`t entered any keywords')
-      process.exit()
+  if (keyWordsToCheck.length >= 30) {
+    log(keyWordsToCheck)
+    log.warn('You have entered to much keywords')
+    process.exit()
+  } else if (keyWordsToCheck.length === 0) {
+    log(keyWordsToCheck)
+    log.warn('You haven`t entered any keywords')
+    process.exit()
+  }
+
+  const inputFileParsed = parseInputData('src.csv')
+  let resultArray = []
+
+  let headerValuesArray = []
+
+  headerValuesArray.push(...inputFileParsed[0])
+  headerValuesArray.push("popularity")
+  headerValuesArray.push(...keyWordsToCheck)
+
+  const csvWriter = createCsvWriter({
+    path: 'data.csv',
+    header: headerValuesArray
+  });
+
+
+  // підготовка даних для перебору
+  try {
+    handleFirstRowForOutputArray()
+
+    while (inputFileParsed.length > 0) {
+      checkUrlExistanceInArray(inputFileParsed, resultArray)
     }
-
-    const inputFileParsed = parseInputData('src.csv')
-    let resultArray = []
-
-    let headerValuesArray = []
-    
-    headerValuesArray.push(...inputFileParsed[0])
-    headerValuesArray.push("popularity")
-    headerValuesArray.push(...keyWordsToCheck)
-    
-    const csvWriter = createCsvWriter({
-      path: 'data.csv',
-      header: headerValuesArray
-    });
+  } catch (error) {
+    log.error("виникла помилка при розборі даних для аналізу\n", error)
+  }
 
 
-    // підготовка даних для перебору
-    try {
-      handleFirstRowForOutputArray()
+  try {
+    await handleKeywordsCount(resultArray)
 
-      while (inputFileParsed.length > 0) {
-        checkUrlExistanceInArray(inputFileParsed, resultArray)
-      }
-    } catch (error) {
-      log.error("виникла помилка при розборі даних для аналізу\n", error)
-    }
+  } catch (error) {
+    // log.error(error);
+  }
 
+  async function handleKeywordsCount(array) {
 
-    try {
-      await handleKeywordsCount(resultArray)
+    log.info(array)
 
-    } catch (error) {
-      log.error(error);
-    }
+    //перебір головного масиву з даними
+    for (let index = 1; index < array.length; index++) {
+      let el = array[index]
+      const rootURL = el[el.length - 2];
 
-    async function handleKeywordsCount(array) {
+      let currentLineKeywordsResult = [];
+      keyWordsToCheck.forEach((keyword, index) => {
+        currentLineKeywordsResult[index] = 0
+      })
 
-      //перебір головного масиву з даними
-      // skip first line
-      for (let index = 1; index < array.length; index++) {
-        let el = array[index]
-        const rootURL = el[el.length - 2];
+      log.d('first request', rootURL)
+      const urlsList = await getLinksFromRoot(rootURL)
 
-        let currentLineKeywordsResult = [];
-        keyWordsToCheck.forEach((keyword, index) => {
-          currentLineKeywordsResult[index] = 0
-        })
+      if (urlsList.length > 0) {
 
-        const urlsList = await getLinksFromRoot(rootURL)
-
-        if (urlsList.length > 0) {
-
+        try {
           // перебір кожного із знайдених лінків
           for (let index = 0; index < urlsList.length && index < 10; index++) {
             const url = urlsList[index]
             const res = await axios.get(url);
+
+            log.d('second request', url)
 
             if (res.status < 200 && res.staus > 300 || typeof res.data !== "string") {
               log.error("bad response");
               log.debug('request to', rootURL)
             } else {
               // перебираємо кожне з клюлчових слів
-              keyWordsToCheck.forEach((keyword, index) => {
+              try {
+                keyWordsToCheck.forEach((keyword, index) => {
 
-                const foundKeywordsNumber = countKeywords(res.data, keyword)
-                currentLineKeywordsResult[index] += foundKeywordsNumber
+                  const foundKeywordsNumber = countKeywords(res.data, keyword)
+                  currentLineKeywordsResult[index] += foundKeywordsNumber
 
-              })
+                })
+              } catch (error) {
+                log.error("keyword error")
+              }
+
             }
-            // log.debug('res.status', res.status)
           }
-
-          currentLineKeywordsResult.forEach(elem => {
-            el.push(elem)
-          })
-          log.info(`result for ${rootURL}`, currentLineKeywordsResult)
-
-          await csvWriter.writeRecords([el])
-
-        } else {
-          el.push('url is not awaliable')
-
-          await csvWriter.writeRecords([el])
+        } catch (error) {
+          log.d("single url error")
         }
 
-        // log.info("output", array)
-      }
 
+        currentLineKeywordsResult.forEach(elem => {
+          el.push(elem)
+        })
+        log.info(`result for ${rootURL}`, currentLineKeywordsResult)
 
+        await csvWriter.writeRecords([el])
 
-      log.warn("ALL DONE")
-
-    }
-
-    // return numbers array
-    function countKeywords(reqText,keyword) {
-      const regex = new RegExp( keyword, 'g' );
-      if (reqText.match(regex) !== null) {
-        return reqText.match(regex).length
       } else {
-        return 0
+        el.push('url is not awaliable')
+        log.warn("url is not awaliable", urlsList)
+        
+        await csvWriter.writeRecords([el])
       }
+
+      // log.info("output", array)
     }
 
 
-    async function getLinksFromRoot(url) {
-      try {
-        const res = await axios.get(url);
-        
-        const httpRegexG = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
-        
-        const domainRegex = /https?:\/\/(?:www\.)?([-a-zA-Z0-9@:%._\+~#=]{1,256})\./
-        const domain = url.match(domainRegex)[1];
-        
-        let linksArray = res.data.match(httpRegexG);
 
-        let result = linksArray.filter(link => {
-          if ( 
-            link.charAt(link.length-1) !== '/' 
-            ||!link.includes(domain) 
-          ) {return false};
+    log.warn("ALL DONE")
 
-          return true;
-        });
-        
-        return Array.from(new Set(result))
+  }
 
-      } catch (error) {
-        log.warn(`cant get ${url}`)
-        // log.error(error)
-        return []
-      }
+  // return numbers array
+  function countKeywords(reqText, keyword) {
+    const regex = new RegExp(keyword, 'g');
+    if (reqText.match(regex) !== null) {
+      return reqText.match(regex).length
+    } else {
+      return 0
     }
+  }
 
 
-    function checkUrlExistanceInArray(inputArr, outputArr) {
+  async function getLinksFromRoot(url) {
+    try {
+      const res = await axios.get(url);
 
-      const currentRowIndex = inputArr.length - 1
-      const currentRowArray = inputArr[currentRowIndex];
-      let findMach = false
+      log.debug(res.status)
+      log.debug(res.data)
 
-      outputArr.forEach((element) => {
+      const httpRegexG = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
 
-        const innerURL = currentRowArray[currentRowArray.length - 1]
-        const outerURL = element[element.length - 2]
+      const domainRegex = /https?:\/\/(?:www\.)?([-a-zA-Z0-9@:%._\+~#=]{1,256})\./
+      const domain = url.match(domainRegex)[1];
 
-        if (innerURL === outerURL) {
-          element[element.length - 1]++
-          inputArr.splice(currentRowIndex, 1)
-          findMach = true
-        }
+      let linksArray = res.data.match(httpRegexG);
+
+      let result = linksArray.filter(link => {
+        if (
+          link.charAt(link.length - 1) !== '/'
+          || !link.includes(domain)
+        ) { return false };
+
+        return true;
       });
 
-      if (!findMach) {
-        let newUrlEl = currentRowArray
-        newUrlEl.push(1)
-        outputArr.push(newUrlEl)
+      result.push(url)
+
+      return Array.from(new Set(result))
+
+    } catch (error) {
+      log.warn(`cant get ${url}`)
+      log.error(error)
+      return []
+    }
+  }
+
+
+  function checkUrlExistanceInArray(inputArr, outputArr) {
+
+    const currentRowIndex = inputArr.length - 1
+    const currentRowArray = inputArr[currentRowIndex];
+    let findMach = false
+
+    outputArr.forEach((element) => {
+
+      const innerURL = currentRowArray[currentRowArray.length - 1]
+      const outerURL = element[element.length - 2]
+
+      if (innerURL === outerURL) {
+        element[element.length - 1]++
         inputArr.splice(currentRowIndex, 1)
+        findMach = true
       }
+    });
+
+    if (!findMach) {
+      let newUrlEl = currentRowArray
+      newUrlEl.push(1)
+      outputArr.push(newUrlEl)
+      inputArr.splice(currentRowIndex, 1)
     }
+  }
 
-    function handleFirstRowForOutputArray() {
-      let newEl = []
-      newEl.length = inputFileParsed[1].length
-      newEl.splice(inputFileParsed[1].length,0, "popularity",...keyWordsToCheck)
+  function handleFirstRowForOutputArray() {
+    let newEl = []
+    newEl.length = inputFileParsed[1].length
+    newEl.splice(inputFileParsed[1].length, 0, "popularity", ...keyWordsToCheck)
 
-      // newEl.push(1)
-      resultArray.push(newEl)
-      log.warn("first line", resultArray[0])
-      // inputFileParsed.splice(0, 1)
-    }
+    // newEl.push(1)
+    resultArray.push(newEl)
+    log.warn("first line", resultArray[0])
+    // inputFileParsed.splice(0, 1)
+  }
 
-    function parseInputData(file) {
-      let inputArray = fs.readFileSync(file).toString().split("\r\n");
+  function parseInputData(file) {
+    let inputArray = fs.readFileSync(file).toString().split("\r\n");
 
-      inputArray = inputArray.map(function (line) {
-        const currentStr = delBr(line).split(',');
+    inputArray = inputArray.map(function (line) {
+      const currentStr = delBr(line).split(',');
 
-        const regex = /(http.*:\/\/[\w\._-]+)/g;
-        let urlEl = currentStr[currentStr.length - 1];
-        const matches = urlEl.matchAll(regex);
-        for (const match of matches) {
-          currentStr[currentStr.length - 1] = match[0] + "/";
-        }
+      const regex = /(http.*:\/\/[\w\._-]+)/g;
+      let urlEl = currentStr[currentStr.length - 1];
+      const matches = urlEl.matchAll(regex);
+      for (const match of matches) {
+        currentStr[currentStr.length - 1] = match[0] + "/";
+      }
 
-        return currentStr;
-      })
-      return inputArray
-    }
+      return currentStr;
+    })
+    return inputArray
+  }
 
 })();
 

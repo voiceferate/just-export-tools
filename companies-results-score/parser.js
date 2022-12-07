@@ -37,7 +37,7 @@ log.i(`Started process: ${file_input_array.length} strings to handle`)
 
 let parsedArray = [];
 
-if (keyWordsToCheck.length >= 20) {
+if (keyWordsToCheck.length >= 40) {
   log(keyWordsToCheck)
   log.warn('You have entered to much keywords')
   process.exit()
@@ -96,7 +96,7 @@ file_input_array.forEach(function (currentValue, index, array) {
         url = url.replace ("https:", 'http:')
 
         axios(url, {
-          timeout: 60000,
+          timeout: 200000,
           maxRedirects: 10,
           // httpsAgent: new https.Agent({ keepAlive: true }),
         })
