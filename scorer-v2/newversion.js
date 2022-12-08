@@ -5,6 +5,9 @@ const fs = require('fs');
 (async () => {
 
   const createCsvWriter = require('csv-writer').createArrayCsvWriter;
+  const csvWriter = createCsvWriter({
+    path: 'data.csv',
+  });
 
   let keyWordsToCheck = process.argv.slice(2);
   keyWordsToCheck = keyWordsToCheck.map((element) => {
@@ -22,10 +25,18 @@ const fs = require('fs');
   }
 
   const inputFileArray = parseInputData('src.csv');
-  const inputArray = addKeyWordsToResultArray(inputFileArray);
+  const inputArray = inputFileArray;
 
+  // записати ключові слова у вихідний файл
+  await csvWriter.writeRecords([getKeyWordsList(inputFileArray)])
+
+  
   // filter input array and remove duplicating sites
   const filteredUrlsArray = filterUniqeUrls(inputArray)
+
+  // temp
+  let ok = 0
+  let bad = 0
 
   // перебираємо підготовлений масив
   for (let index = 1; index < filteredUrlsArray.length; index++) {
@@ -37,90 +48,98 @@ const fs = require('fs');
       currentLineKeywordsResult[index] = 0
     })
 
-    console.log("url", rootUrl);
-
-
     const response = await getPage(rootUrl);
-    if (response !== false || response !== undefined) {
+
+    if (response !== false && response !== undefined) {
 
       const childURLS = getLinksFromRoot(response, rootUrl)
-      // console.log("childURLS", childURLS);
 
       for (let index = 0; index < childURLS.length && index < 10; index++) {
-        
-        const childPage = await getPage(childURLS[index]);
+
+        const childPage = await getChildPage(childURLS[index]);
         if (childPage === false) {
           continue
         }
 
         keyWordsToCheck.forEach((keyword, index) => {
 
-          // console.log(childPage)
           const foundKeywordsNumber = countKeywords(childPage, keyword)
           currentLineKeywordsResult[index] += foundKeywordsNumber
 
         })
       }
+      ok++
+      console.log(`ok req ${ok} from ${filteredUrlsArray.length}`)
+      console.log("bad req", bad)
 
-      console.log("currentLineKeywordsResult", currentLineKeywordsResult)
+
       currentLineKeywordsResult.forEach(elem => {
         element.push(elem)
       })
       log.info(`result for ${rootUrl}`, currentLineKeywordsResult)
+      log.info(`whole result for ${rootUrl}`, element)
+      await csvWriter.writeRecords([element])
 
     } else {
       console.log("cant get")
       // return null
 
       // отут треба замутити запит через безголовий хром
+      bad++
+      console.log("ok req", ok)
+      console.log("bad req", bad)
+      await csvWriter.writeRecords([element])
+
       continue
 
 
     }
 
   }
+
+
   console.log("done all")
 
-    // return numbers array
-    function countKeywords(reqText, keyword) {
-      const regex = new RegExp(keyword, 'g');
-      if (reqText.match(regex) !== null) {
-        return reqText.match(regex).length
-      } else {
-        return 0
-      }
+  // return numbers array
+  function countKeywords(reqText, keyword) {
+    const regex = new RegExp(keyword, 'g');
+    if (reqText.match(regex) !== null) {
+      return reqText.match(regex).length
+    } else {
+      return 0
     }
+  }
 
 
   function getLinksFromRoot(pageText, root) {
 
-      console.log("root", root)
+    console.log("root", root)
 
-      const httpRegexG = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
+    const httpRegexG = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
 
-      const domainRegex = /https?:\/\/(?:www\.)?([-a-zA-Z0-9@:%._\+~#=]{1,256})\./
-      const domain = root.match(domainRegex)[1];
+    const domainRegex = /https?:\/\/(?:www\.)?([-a-zA-Z0-9@:%._\+~#=]{1,256})\./
+    const domain = root.match(domainRegex)[1];
 
-      let linksArray = pageText.match(httpRegexG);
+    let linksArray = pageText.match(httpRegexG);
 
-      let result = [root];
+    let result = [root];
 
-      if (linksArray && linksArray.length > 0) {
-        let findedUrls = linksArray.filter(link => {
-          if (
-            link.match(domainRegex)[1] !== domain
-            || link.match(/(.*\/{2}.*\/{1}.*\.)/g) !== null
-            || link.includes("/wp-") === true
-          ) { 
-            return false 
-          };
+    if (linksArray && linksArray.length > 0) {
+      let findedUrls = linksArray.filter(link => {
+        if (
+          link.match(domainRegex)[1] !== domain
+          || link.match(/(.*\/{2}.*\/{1}.*\.)/g) !== null
+          || link.includes("/wp-") === true
+        ) {
+          return false
+        };
 
-          return true;
-        });
-        result.push(...findedUrls)
-      };
+        return true;
+      });
+      result.push(...findedUrls)
+    };
 
-      return Array.from(new Set(result))
+    return Array.from(new Set(result))
   }
 
   async function getPage(url) {
@@ -131,7 +150,7 @@ const fs = require('fs');
         maxRedirects: 10,
       }
       )
-  
+
       console.log("status", res.status)
 
       if (res.status === 200 && typeof res.data === "string") {
@@ -142,9 +161,38 @@ const fs = require('fs');
 
         return false
       }
-      
+
     } catch (error) {
-      console.log("error", error.cause)
+      console.log("error getting page")
+      // console.log("error", error)
+      return false
+    }
+  }
+
+  async function getChildPage(url) {
+
+    try {
+      let res = await axios.get(url, {
+        timeout: 2000,
+        maxRedirects: 10,
+      }
+      )
+
+      console.log("child status", res.status)
+
+      if (res.status === 200 && typeof res.data === "string") {
+        console.log("return resp");
+        return res.data
+      } else {
+        console.log("return bad resp", res.status);
+
+        return false
+      }
+
+    } catch (error) {
+      console.log("error getting child page")
+      console.log(url)
+      // console.log("error", error)
       return false
     }
   }
@@ -187,15 +235,15 @@ const fs = require('fs');
     return output
   }
 
-  function addKeyWordsToResultArray(inputArr) {
+  function getKeyWordsList(inputArr) {
     let headerValuesArray = []
 
     headerValuesArray.length = inputArr[1].length
     headerValuesArray.push("popularity")
     headerValuesArray.push(...keyWordsToCheck)
 
-    inputArr.unshift([...headerValuesArray])
-    return inputArr
+    // inputArr.unshift([...headerValuesArray])
+    return headerValuesArray
   }
 
   function parseInputData(file) {

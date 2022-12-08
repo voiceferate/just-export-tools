@@ -3,7 +3,7 @@ const needle = require('needle');
 const https = require("https");
 
 
-axios.get("https://www.theiss.sk/", 
+axios.get("https://www.kavlak.com.tr", 
 
 )
 .then((res) => {
@@ -15,7 +15,7 @@ axios.get("https://www.theiss.sk/",
   console.log(error)
 })
 
-needle('get', 'https://www.theiss.sk/')
+needle('get', 'https://www.kavlak.com.tr')
   .then(function(resp) {
     console.log("needle", resp.data);
     console.log("needle status", res.status)
