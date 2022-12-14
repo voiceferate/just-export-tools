@@ -3,7 +3,7 @@ const log = require('cllc')();
 const fs = require('fs');
 const puppeteer = require('puppeteer')
 
-
+https://plainenglish.io/blog/async-await-foreach
 
 
 const createCsvWriter = require('csv-writer').createArrayCsvWriter;
@@ -29,21 +29,15 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
     process.exit()
   }
 
-  const inputFileArray = parseInputData('src3.csv');
-  // const inputFileArray = parseInputData('src.csv');
+  const inputFileArray = parseInputData('src.csv');
   const inputArray = inputFileArray;
+  const unreachebleURLS = [];
 
-
-
-
-    // записати ключові слова у вихідний файл
-    await csvWriter.writeRecords([getKeyWordsList(inputFileArray)])
-
-
+  // записати ключові слова у вихідний файл
+  await csvWriter.writeRecords([getKeyWordsList(inputFileArray)])
 
   // filter input array and remove duplicating sites
   const filteredUrlsArray = filterUniqeUrls(inputArray)
-
 
   // перебираємо підготовлений масив
   filteredUrlsArray.forEach(async (elem, index) => {
@@ -51,13 +45,16 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
       return
     }
 
+    if (index === filteredUrlsArray.length - 1) {
+      log.warn(unreachebleURLS)
+    }
+
     const rootUrl = elem[elem.length-2]
 
     axios.get(rootUrl, {
-      timeout: 600000
+      timeout: 60000
     })
     .then(async function (response) {
-      // handle success
 
       let lineTotal = []
       
@@ -69,10 +66,8 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
       }
       
       console.log(response.status);
-      // console.log(response.data.slice(0,30));
 
       const childLinks = getLinksFromRoot(response.data, rootUrl)
-
       if (childLinks.length === 0) {log.error('empty childLinks')};
 
       // ######################################
@@ -87,7 +82,6 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
           timeout: 30000
         })
           .then(function (response) {
-            // handle success
             const childPage = response.data;
             
             keyWordsToCheck.forEach((keyword, index) => {
@@ -97,69 +91,27 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
             
           })
           .catch(function (error) {
-            // handle error
             log.error("child req error", error.code);
             return
           })
-          // log.warn(`single line result for ${currentChildURL}: \n ${lineTotal}`)
       }
       // ######################################
-      
-      // отут треба вернути стандартний формат відповіді. досить віддати просто масив з одним рядком
-        
 
-      fs.writeFile('log.txt', lineTotal, err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-      return {totalResult: lineTotal}
-    })
-    .catch(async function (error) {
-      // handle error
-
-      if (error.message && error.message ===  "wrong response format") {
-        log.error("custom error")
-      }
-
-      log.error(error);
-      log.error("error block");
-      fs.writeFile('log.txt', error, err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-
-      log("try puppeteer")
-      // log(rootUrl);
-      
-      // const puppeteerResult = await openHeadlessPage(rootUrl)
-      // log.warn("puppeteerResult", puppeteerResult)
-
-
-      // отут інший спосіб получити сторінку, але також вертаю просто масив
-      // return "second block error case"
-      // return {totalResult: [puppeteerResult]}
-      return {totalResult: ["puppeteerResult"]}
-
-
-    })
-    .then(async function (res) {
-      // always executed
       let sinleLineResult = elem;
-      const keywordsCountRes = res.totalResult
+      const keywordsCountRes = lineTotal
       sinleLineResult.push(...keywordsCountRes)
       log.info("res", sinleLineResult)
 
-
       await csvWriter.writeRecords([sinleLineResult])
-      log.info("finally")
-
-      // тут записую результат
-    });
-
+    })
+    .catch(async function (error) {
+      log.error("error block");
+      unreachebleURLS.push(rootUrl)
+    })
 
   })
+
+
 
 
 
