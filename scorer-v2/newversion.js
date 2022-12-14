@@ -3,7 +3,7 @@ const log = require('cllc')();
 const fs = require('fs');
 const puppeteer = require('puppeteer')
 
-https://plainenglish.io/blog/async-await-foreach
+// https://plainenglish.io/blog/async-await-foreach
 
 
 const createCsvWriter = require('csv-writer').createArrayCsvWriter;
@@ -31,7 +31,6 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
 
   const inputFileArray = parseInputData('src.csv');
   const inputArray = inputFileArray;
-  const unreachebleURLS = [];
 
   // записати ключові слова у вихідний файл
   await csvWriter.writeRecords([getKeyWordsList(inputFileArray)])
@@ -39,77 +38,81 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
   // filter input array and remove duplicating sites
   const filteredUrlsArray = filterUniqeUrls(inputArray)
 
-  // перебираємо підготовлений масив
-  filteredUrlsArray.forEach(async (elem, index) => {
-    if (index === 1) {
-      return
-    }
+  async function iterate() {
 
-    if (index === filteredUrlsArray.length - 1) {
-      log.warn(unreachebleURLS)
-    }
+    const unreachebleURLS = [];
+    
+    // перебираємо підготовлений масив
+    for (const elem of filteredUrlsArray) {
 
-    const rootUrl = elem[elem.length-2]
+      const rootUrl = elem[elem.length-2]
 
-    axios.get(rootUrl, {
-      timeout: 60000
-    })
-    .then(async function (response) {
+      axios.get(rootUrl, {
+        timeout: 60000
+      })
+      .then(async function (response) {
 
-      let lineTotal = []
-      
-      if (response && response.status < 200 && response.status > 300 && typeof response.data !== "string") {
-        throw new Error({
-          message: 'wrong response format',
-          url: rootUrl
-        });
-      }
-      
-      console.log(response.status);
+        let lineTotal = []
+        
+        if (response && response.status < 200 && response.status > 300 && typeof response.data !== "string") {
+          throw new Error({
+            message: 'wrong response format',
+            url: rootUrl
+          });
+        }
+        
+        console.log(response.status);
 
-      const childLinks = getLinksFromRoot(response.data, rootUrl)
-      if (childLinks.length === 0) {log.error('empty childLinks')};
+        const childLinks = getLinksFromRoot(response.data, rootUrl)
+        if (childLinks.length === 0) {log.error('empty childLinks')};
 
-      // ######################################
-      // створюю масив для резьтатів по одному рядку і заповнюю його нулями
-      keyWordsToCheck.forEach((k, index) => { lineTotal[index] = 0 })
+        log.d(childLinks.length)
+        // ######################################
+        // створюю масив для резьтатів по одному рядку і заповнюю його нулями
+        keyWordsToCheck.forEach((k, index) => { lineTotal[index] = 0 })
 
-      for (let index = 0; index < childLinks.length && index < 10; index++) {
+        for (let index = 0; index < childLinks.length && index < 10; index++) {
 
-        const currentChildURL = childLinks[index];
+          const currentChildURL = childLinks[index];
 
-        await axios.get(currentChildURL, {
-          timeout: 30000
-        })
-          .then(function (response) {
-            const childPage = response.data;
-            
-            keyWordsToCheck.forEach((keyword, index) => {
-              const foundKeywordsNumber = countKeywords(childPage, keyword)
-              lineTotal[index] += foundKeywordsNumber
+          await axios.get(currentChildURL, {
+            timeout: 30000
+          })
+            .then(function (response) {
+              const childPage = response.data;
+              
+              keyWordsToCheck.forEach((keyword, index) => {
+                const foundKeywordsNumber = countKeywords(childPage, keyword)
+                lineTotal[index] += foundKeywordsNumber
+              })
+              
             })
-            
-          })
-          .catch(function (error) {
-            log.error("child req error", error.code);
-            return
-          })
-      }
-      // ######################################
+            .catch(function (error) {
+              log.error("child req error", error.code);
+              return
+            })
+        }
+        // ######################################
 
-      let sinleLineResult = elem;
-      const keywordsCountRes = lineTotal
-      sinleLineResult.push(...keywordsCountRes)
-      log.info("res", sinleLineResult)
+        let sinleLineResult = elem;
+        const keywordsCountRes = lineTotal
+        sinleLineResult.push(...keywordsCountRes)
+        log.info("res", sinleLineResult)
 
-      await csvWriter.writeRecords([sinleLineResult])
-    })
-    .catch(async function (error) {
-      log.error("error block");
-      unreachebleURLS.push(rootUrl)
-    })
+        await csvWriter.writeRecords([sinleLineResult])
+      })
+      .catch(async function (error) {
+        log.error("error block");
+        unreachebleURLS.push(rootUrl)
+      })
 
-  })
+    }
+  }
+
+  const links = await iterate()
+
+  // log.warn("unreachebleURLS",links)
+
 
 
 
