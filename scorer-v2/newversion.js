@@ -1,10 +1,15 @@
 const axios = require('axios');
 const log = require('cllc')();
 const fs = require('fs');
+const puppeteer = require('puppeteer')
 
-(async () => {
 
-  const createCsvWriter = require('csv-writer').createArrayCsvWriter;
+
+
+const createCsvWriter = require('csv-writer').createArrayCsvWriter;
+
+(async function() {
+
   const csvWriter = createCsvWriter({
     path: 'data.csv',
   });
@@ -24,81 +29,140 @@ const fs = require('fs');
     process.exit()
   }
 
-  const inputFileArray = parseInputData('src.csv');
+  const inputFileArray = parseInputData('src3.csv');
+  // const inputFileArray = parseInputData('src.csv');
   const inputArray = inputFileArray;
 
-  // записати ключові слова у вихідний файл
-  await csvWriter.writeRecords([getKeyWordsList(inputFileArray)])
 
-  
+
+
+    // записати ключові слова у вихідний файл
+    await csvWriter.writeRecords([getKeyWordsList(inputFileArray)])
+
+
+
   // filter input array and remove duplicating sites
   const filteredUrlsArray = filterUniqeUrls(inputArray)
 
-  // temp
-  let ok = 0
-  let bad = 0
 
   // перебираємо підготовлений масив
-  for (let index = 1; index < filteredUrlsArray.length; index++) {
-    const element = filteredUrlsArray[index];
-    const rootUrl = element[element.length - 2];
-
-    let currentLineKeywordsResult = [];
-    keyWordsToCheck.forEach((keyword, index) => {
-      currentLineKeywordsResult[index] = 0
-    })
-
-    const response = await getPage(rootUrl);
-
-    if (response !== false && response !== undefined) {
-
-      const childURLS = getLinksFromRoot(response, rootUrl)
-
-      for (let index = 0; index < childURLS.length && index < 10; index++) {
-
-        const childPage = await getChildPage(childURLS[index]);
-        if (childPage === false) {
-          continue
-        }
-
-        keyWordsToCheck.forEach((keyword, index) => {
-
-          const foundKeywordsNumber = countKeywords(childPage, keyword)
-          currentLineKeywordsResult[index] += foundKeywordsNumber
-
-        })
-      }
-      ok++
-      console.log(`ok req ${ok} from ${filteredUrlsArray.length}`)
-      console.log("bad req", bad)
-
-
-      currentLineKeywordsResult.forEach(elem => {
-        element.push(elem)
-      })
-      log.info(`result for ${rootUrl}`, currentLineKeywordsResult)
-      log.info(`whole result for ${rootUrl}`, element)
-      await csvWriter.writeRecords([element])
-
-    } else {
-      console.log("cant get")
-      // return null
-
-      // отут треба замутити запит через безголовий хром
-      bad++
-      console.log("ok req", ok)
-      console.log("bad req", bad)
-      await csvWriter.writeRecords([element])
-
-      continue
-
-
+  filteredUrlsArray.forEach(async (elem, index) => {
+    if (index === 1) {
+      return
     }
 
-  }
+    const rootUrl = elem[elem.length-2]
+
+    axios.get(rootUrl, {
+      timeout: 600000
+    })
+    .then(async function (response) {
+      // handle success
+
+      let lineTotal = []
+      
+      if (response && response.status < 200 && response.status > 300 && typeof response.data !== "string") {
+        throw new Error({
+          message: 'wrong response format',
+          url: rootUrl
+        });
+      }
+      
+      console.log(response.status);
+      // console.log(response.data.slice(0,30));
+
+      const childLinks = getLinksFromRoot(response.data, rootUrl)
+
+      if (childLinks.length === 0) {log.error('empty childLinks')};
+
+      // ######################################
+      // створюю масив для резьтатів по одному рядку і заповнюю його нулями
+      keyWordsToCheck.forEach((k, index) => { lineTotal[index] = 0 })
+
+      for (let index = 0; index < childLinks.length && index < 10; index++) {
+
+        const currentChildURL = childLinks[index];
+
+        await axios.get(currentChildURL, {
+          timeout: 30000
+        })
+          .then(function (response) {
+            // handle success
+            const childPage = response.data;
+            
+            keyWordsToCheck.forEach((keyword, index) => {
+              const foundKeywordsNumber = countKeywords(childPage, keyword)
+              lineTotal[index] += foundKeywordsNumber
+            })
+            
+          })
+          .catch(function (error) {
+            // handle error
+            log.error("child req error", error.code);
+            return
+          })
+          // log.warn(`single line result for ${currentChildURL}: \n ${lineTotal}`)
+      }
+      // ######################################
+      
+      // отут треба вернути стандартний формат відповіді. досить віддати просто масив з одним рядком
+        
+
+      fs.writeFile('log.txt', lineTotal, err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+      return {totalResult: lineTotal}
+    })
+    .catch(async function (error) {
+      // handle error
+
+      if (error.message && error.message ===  "wrong response format") {
+        log.error("custom error")
+      }
+
+      log.error(error);
+      log.error("error block");
+      fs.writeFile('log.txt', error, err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+
+      log("try puppeteer")
+      // log(rootUrl);
+      
+      // const puppeteerResult = await openHeadlessPage(rootUrl)
+      // log.warn("puppeteerResult", puppeteerResult)
 
 
-  console.log("done all")
+      // отут інший спосіб получити сторінку, але також вертаю просто масив
+      // return "second block error case"
+      // return {totalResult: [puppeteerResult]}
+      return {totalResult: ["puppeteerResult"]}
+
+
+    })
+    .then(async function (res) {
+      // always executed
+      let sinleLineResult = elem;
+      const keywordsCountRes = res.totalResult
+      sinleLineResult.push(...keywordsCountRes)
+      log.info("res", sinleLineResult)
+
+
+      await csvWriter.writeRecords([sinleLineResult])
+      log.info("finally")
+
+      // тут записую результат
+    });
+
+
+  })
+
+
+
 
   // return numbers array
   function countKeywords(reqText, keyword) {
@@ -130,6 +194,7 @@ const fs = require('fs');
           link.match(domainRegex)[1] !== domain
           || link.match(/(.*\/{2}.*\/{1}.*\.)/g) !== null
           || link.includes("/wp-") === true
+          || link.includes("/#") === true
         ) {
           return false
         };
@@ -151,19 +216,19 @@ const fs = require('fs');
       }
       )
 
-      console.log("status", res.status)
+      // console.log("status", res.status)
 
       if (res.status === 200 && typeof res.data === "string") {
-        console.log("return resp");
+        // console.log("return resp");
         return res.data
       } else {
-        console.log("return bad resp", res.status);
+        // console.log("return bad resp", res.status);
 
         return false
       }
 
     } catch (error) {
-      console.log("error getting page")
+      // console.log("error getting page")
       // console.log("error", error)
       return false
     }
@@ -178,20 +243,20 @@ const fs = require('fs');
       }
       )
 
-      console.log("child status", res.status)
+      // console.log("child status", res.status)
 
       if (res.status === 200 && typeof res.data === "string") {
-        console.log("return resp");
+        // console.log("return resp");
         return res.data
       } else {
-        console.log("return bad resp", res.status);
+        // console.log("return bad resp", res.status);
 
         return false
       }
 
     } catch (error) {
-      console.log("error getting child page")
-      console.log(url)
+      // console.log("error getting child page")
+      // console.log(url)
       // console.log("error", error)
       return false
     }
@@ -202,7 +267,7 @@ const fs = require('fs');
     let output = [array[0]];
 
 
-    for (let index = 1; index < array.length; index++) {
+    for (let index = 0; index < array.length; index++) {
       const element = array[index];
       let findMach = false;
 
@@ -219,18 +284,6 @@ const fs = require('fs');
       }
     }
 
-
-    // array.forEach((element, index, arr) => {
-    //   // add first item to output
-
-    //   if (output.length === 0) {
-    //     element.push(1)
-    //     output.push(element)
-    //   }
-
-    //   // console.log("typeof", typeof element)
-    //   // console.log("element", element)
-    // });
 
     return output
   }
@@ -264,7 +317,47 @@ const fs = require('fs');
     return inputArr
   }
 
+  async function openHeadlessPage(url) {
+    const browser = await puppeteer.launch({
+      headless: true,
+      // ignoreHTTPSErrors: true,
+      args: [
+        // '--start-fullscreen',
+        '-start-maximized',
+        '--incognito',
+        '--no-sandbox',
+      ],
+    })
+
+    try {
+      const page = await browser.newPage()
+      
+      page.setViewport({
+        width: 1360,
+        height: 760,
+      })
+
+      await page.goto(url)
+      await page.waitForSelector("body", { timeout: 6000 })
+
+      const headlessPage = await page.evaluate(() => {
+        // log.warn("innerHTML", document.querySelector("html").innerHTML)
+        return document.querySelector("html").innerHTML
+      })
+      await browser.close()
+
+      // log.debug("headlessPage", headlessPage)
+      return "peppeter result"
+    }
+    catch(error) {
+      log.error("peppeter navigation error")
+      await browser.close()
+      return "peppeter empty result"
+    }
+  }
+
   function delBrLink(s) { return s.replace(/\s{1,}/g, '') };
   function delBr(s) { return s.replace(/\s{2,}/g, ' ') };
 
-})();
+
+})()
