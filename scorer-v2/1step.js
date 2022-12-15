@@ -58,7 +58,7 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
       log.info(rootUrl)
 
       axios.get(rootUrl, {
-        timeout: 60000
+        timeout: 600000
       })
       .then(async function (response) {
 
@@ -85,7 +85,7 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
           const currentChildURL = childLinks[index];
 
           await axios.get(currentChildURL, {
-            timeout: 30000
+            timeout: 300000
           })
             .then(function (response) {
               const childPage = response.data;
@@ -115,6 +115,7 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
       })
       .catch(async function (error) {
         log.error("error block");
+        // log.error(error);
         await csvWriterUnreacable.writeRecords([elem])
         log.step(0, 1, 1);
       })

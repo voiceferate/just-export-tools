@@ -35,7 +35,7 @@ async function parse(inputArr) {
 
   const browser = await puppeteer.launch({
     headless: false,
-    // ignoreHTTPSErrors: true,
+    ignoreHTTPSErrors: true,
     args: [
       // '--start-fullscreen',
       '-start-maximized',
