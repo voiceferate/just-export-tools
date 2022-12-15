@@ -34,7 +34,7 @@ async function parse(inputArr) {
   log("inputArr", inputArr)
 
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: true,
     ignoreHTTPSErrors: true,
     args: [
       // '--start-fullscreen',
@@ -45,6 +45,7 @@ async function parse(inputArr) {
   })
 
 
+  log.start(`done [%s] of ${inputArr.length}: OK - [%s]`);
 
   for (let index = 0; index < inputArr.length; index++) {
     const element = inputArr[index];
@@ -54,12 +55,8 @@ async function parse(inputArr) {
 
     const page = await browser.newPage()
 
-    page.setViewport({
-      width: 1360,
-      height: 760,
-    })
+    log(url);
 
-    log.debug(url)
     try {
 
       await page.setRequestInterception(true);
@@ -71,35 +68,42 @@ async function parse(inputArr) {
 
       await page.goto(url, {
         waitUntil: "load",
-        timeout: 5000
+        timeout: 4500
       })
 
       const headlessPage = await page.evaluate(() => {
         return document.querySelector("html").innerHTML
       })
 
-      // log.info("page", headlessPage)
-
       let lineResult = [];
       keyWordsToCheck.forEach((keyword, index) => {
         const foundKeywordsNumber = countKeywords(headlessPage, keyword)
         lineResult[index] = foundKeywordsNumber
       })
-      log.info("lineResult", lineResult)
 
       let sinleLineResult = element;
       sinleLineResult.push(...lineResult)
-      log.info("res", sinleLineResult)
+      
+      log.info("res - OK:", url)
 
       await csvWriter.writeRecords([sinleLineResult])
       await page.close()
+      log.step(1, 1)
       continue
 
 
     } catch (error) {
-      log.error(error)
-      log("peppeter empty result")
+      // log.error(error)
+      log.warn("can't get")
+
+      let sinleLineResult = element;
+      sinleLineResult.push(`can't get`)
+
+      await csvWriter.writeRecords([sinleLineResult])
+
       await page.close()
+      log.step(1, 0)
+
       continue
     } 
     // log.debug("headlessPage", headlessPage)

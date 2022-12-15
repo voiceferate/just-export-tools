@@ -71,7 +71,7 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
           });
         }
         
-        console.log(response.status);
+        log(response.status);
 
         const childLinks = getLinksFromRoot(response.data, rootUrl)
         if (childLinks.length === 0) {log.error('empty childLinks')};
@@ -80,7 +80,7 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
         // створюю масив для резьтатів по одному рядку і заповнюю його нулями
         keyWordsToCheck.forEach((k, index) => { lineTotal[index] = 0 })
         let childSuccesResponse = 0
-        for (let index = 0; index < childLinks.length && index < 10; index++) {
+        for (let index = 0; index < childLinks.length && index < 12; index++) {
 
           const currentChildURL = childLinks[index];
 
@@ -139,7 +139,7 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
 
   function getLinksFromRoot(pageText, root) {
 
-    console.log("root", root)
+    log("root", root)
 
     const httpRegexG = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
 
@@ -224,44 +224,6 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
     return inputArr
   }
 
-  async function openHeadlessPage(url) {
-    const browser = await puppeteer.launch({
-      headless: true,
-      // ignoreHTTPSErrors: true,
-      args: [
-        // '--start-fullscreen',
-        '-start-maximized',
-        '--incognito',
-        '--no-sandbox',
-      ],
-    })
-
-    try {
-      const page = await browser.newPage()
-      
-      page.setViewport({
-        width: 1360,
-        height: 760,
-      })
-
-      await page.goto(url)
-      await page.waitForSelector("body", { timeout: 6000 })
-
-      const headlessPage = await page.evaluate(() => {
-        // log.warn("innerHTML", document.querySelector("html").innerHTML)
-        return document.querySelector("html").innerHTML
-      })
-      await browser.close()
-
-      // log.debug("headlessPage", headlessPage)
-      return "peppeter result"
-    }
-    catch(error) {
-      log.error("peppeter navigation error")
-      await browser.close()
-      return "peppeter empty result"
-    }
-  }
 
   function delBrLink(s) { return s.replace(/\s{1,}/g, '') };
   function delBr(s) { return s.replace(/\s{2,}/g, ' ') };
