@@ -11,7 +11,11 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
 (async function() {
 
   const csvWriter = createCsvWriter({
-    path: 'data.csv',
+    path: 'result1.csv',
+  });
+
+  const csvWriterUnreacable = createCsvWriter({
+    path: 'input-second-step.csv',
   });
 
   let keyWordsToCheck = process.argv.slice(2);
@@ -37,15 +41,21 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
 
   // filter input array and remove duplicating sites
   const filteredUrlsArray = filterUniqeUrls(inputArray)
+  log.info(filteredUrlsArray.length)
 
   async function iterate() {
 
-    const unreachebleURLS = [];
+
+    log.i(`Started process: ${filteredUrlsArray.length} URLS to handle`);
+    log.start('lines done: [%s]\nurls is not available [%s]\nURLS total: [%s]', 0, 0, 0);
     
     // перебираємо підготовлений масив
-    for (const elem of filteredUrlsArray) {
+    // for (const [i, elem] of filteredUrlsArray.entries()) {
+    for await (const elem of filteredUrlsArray) {
 
       const rootUrl = elem[elem.length-2]
+
+      log.info(rootUrl)
 
       axios.get(rootUrl, {
         timeout: 60000
@@ -66,11 +76,10 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
         const childLinks = getLinksFromRoot(response.data, rootUrl)
         if (childLinks.length === 0) {log.error('empty childLinks')};
 
-        log.d(childLinks.length)
         // ######################################
         // створюю масив для резьтатів по одному рядку і заповнюю його нулями
         keyWordsToCheck.forEach((k, index) => { lineTotal[index] = 0 })
-
+        let childSuccesResponse = 0
         for (let index = 0; index < childLinks.length && index < 10; index++) {
 
           const currentChildURL = childLinks[index];
@@ -85,38 +94,35 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
                 const foundKeywordsNumber = countKeywords(childPage, keyword)
                 lineTotal[index] += foundKeywordsNumber
               })
-              
+              childSuccesResponse++
             })
             .catch(function (error) {
               log.error("child req error", error.code);
               return
             })
         }
+        log.debug(`childLinks: ${childLinks.length}\nget info from ${childSuccesResponse}`)
+
         // ######################################
 
         let sinleLineResult = elem;
         const keywordsCountRes = lineTotal
         sinleLineResult.push(...keywordsCountRes)
-        log.info("res", sinleLineResult)
+        // log.info("res", sinleLineResult)
 
         await csvWriter.writeRecords([sinleLineResult])
+        log.step(1, 0, 1);
       })
       .catch(async function (error) {
         log.error("error block");
-        unreachebleURLS.push(rootUrl)
+        await csvWriterUnreacable.writeRecords([elem])
+        log.step(0, 1, 1);
       })
 
     }
   }
 
-  const links = await iterate()
-
-  // log.warn("unreachebleURLS",links)
-
-
-
-
-
+  iterate()
 
 
   // return numbers array
@@ -162,67 +168,14 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
     return Array.from(new Set(result))
   }
 
-  async function getPage(url) {
-
-    try {
-      let res = await axios.get(url, {
-        timeout: 15000,
-        maxRedirects: 10,
-      }
-      )
-
-      // console.log("status", res.status)
-
-      if (res.status === 200 && typeof res.data === "string") {
-        // console.log("return resp");
-        return res.data
-      } else {
-        // console.log("return bad resp", res.status);
-
-        return false
-      }
-
-    } catch (error) {
-      // console.log("error getting page")
-      // console.log("error", error)
-      return false
-    }
-  }
-
-  async function getChildPage(url) {
-
-    try {
-      let res = await axios.get(url, {
-        timeout: 2000,
-        maxRedirects: 10,
-      }
-      )
-
-      // console.log("child status", res.status)
-
-      if (res.status === 200 && typeof res.data === "string") {
-        // console.log("return resp");
-        return res.data
-      } else {
-        // console.log("return bad resp", res.status);
-
-        return false
-      }
-
-    } catch (error) {
-      // console.log("error getting child page")
-      // console.log(url)
-      // console.log("error", error)
-      return false
-    }
-  }
-
 
   function filterUniqeUrls(array) {
-    let output = [array[0]];
+    let output = [];
+    array[0].push(1)
+    output.push(array[0]);
 
 
-    for (let index = 0; index < array.length; index++) {
+    for (let index = 1; index < array.length; index++) {
       const element = array[index];
       let findMach = false;
 
@@ -238,8 +191,6 @@ const createCsvWriter = require('csv-writer').createArrayCsvWriter;
         output.push(element)
       }
     }
-
-
     return output
   }
 
