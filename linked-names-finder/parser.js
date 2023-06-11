@@ -2,7 +2,6 @@ const { exit } = require('process');
 const log = require('cllc')();
 const axios = require('axios');
 const puppeteer = require('puppeteer');
-const places = require('./countries');
 const fs = require('fs');
 
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
@@ -22,57 +21,66 @@ const parseResultWriter = createCsvWriter({
   ]
 });
 
-
-const arguments = process.argv.slice(2)
-if (arguments.length == 0 || arguments.length > 3) {
-  log.e('arguments empty or has a wrong format');
-  exit();
-}
-if (!places.countriesList.hasOwnProperty(arguments[1].toUpperCase())) {
-  log.e('you have entered nonexistent country shortname');
-  exit();
-}
-
-if (arguments[2] && !Number.isInteger(+arguments[2])) {
-  log.e('third argument is not a number');
-  exit();
-}
-const scrollCardsAmount = arguments[2] || 40;
-
-// масив запитів для перебору
-const queriesArray = places.makeQueriesArray(arguments)
-log(queriesArray)
-
-let parsedPlacesLinks = []
-let currentIteratorStep = 0;
+const URLSlist = [
+  "https://www.linkedin.com/company/yoh-a-day-&-zimmermann-company/people/",
+  "https://www.linkedin.com/company/it-company/people/",
+  "https://www.linkedin.com/company/it-company-co/people/",
+  "https://www.linkedin.com/company/itcompanyindia/people/"
+]
 
 
 
-startParse()
+startParse(URLSlist)
 
 
 
-async function startParse() {
+async function startParse(urlArray) {
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
-  page.setViewport({ width: 1280, height: 600 });
+  // page.setViewport({ width: 1280, height: 600 });
 
-  await page.goto("https://www.google.com.ua/maps/?hl=en");
-  await page.waitForSelector('input#searchboxinput', { timeout: 5000 })
+  await page.goto("https://www.linkedin.com/home");
+  await page.waitForSelector('input', { timeout: 5000 })
 
-  for (const currentQuery of queriesArray) {
-    try {
-      await handleSingleQuery(page, currentQuery);
-    } catch (error) {
-      log.error(`throuble on ${currentQuery},\n`, error)
-    }
-    log(currentQuery)
+  await page.type('input[autocomplete="username"]', 'vanyavi06@gmail.com', {delay: 100});
+  await page.type('input[autocomplete="current-password"]', '!Q2w3e4r++', {delay: 100});
+
+  await Promise.all([
+    page.waitForNavigation(),
+    page.click(".sign-in-form__submit-button")
+  ]);
+
+
+
+  for (let index = 0; index < urlArray.length; index++) {
+    const element = urlArray[index];
+    log.info(`link ${index} start`)
+
+    await page.goto(element);
+    await page.waitForSelector('input', { timeout: 5000 });
+    
+    log(response)
+    log.info(`link ${index} end`)
+
   }
-  log.debug('done all scrolling');
-  await browser.close();
 
-  parseLinks(placesLinksIterator(parsedPlacesLinks))
-  log.start(`lines total: ${parsedPlacesLinks.length}\nlines done [%s]`, 1);
+
+
+
+
+
+  // for (const currentQuery of queriesArray) {
+  //   try {
+  //     await handleSingleQuery(page, currentQuery, placesArray);
+  //   } catch (error) {
+  //     log.error(`throuble on ${currentQuery},\n`, error)
+  //   }
+  //   log(currentQuery)
+  // }
+  // await browser.close();
+
+  // parseLinks(placesLinksIterator(parsedPlacesLinks))
+  // log.start(`lines total: ${parsedPlacesLinks.length}\nlines done [%s]`, 1);
 
 }
 
@@ -87,18 +95,11 @@ async function handleSingleQuery(page, item) {
   await page.keyboard.press('Backspace');
   await page.type('input#searchboxinput', item);
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(3000);
 
-
-  let load = await page.waitForSelector('.m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd', { timeout: 60000 })
-  log(load)
-
-    await page.waitForSelector('.m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd', { timeout: 60000 }).then(async () => {
+  await page.waitForSelector('.m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd', { timeout: 60000 }).then(async () => {
 
     try {
       await autoScroll(page);
-      log.debug('autoScroll single done')
-
     } catch (error) {
       log.error('scroll error \n', error)
     }
@@ -114,30 +115,23 @@ async function handleSingleQuery(page, item) {
 
           output.name = elem.ariaLabel
 
-          let activity = elem.querySelector(".Z8fK3b .W4Efsd .W4Efsd:nth-child(1) span:nth-child(1) span")
+          let activity = elem.querySelector(".Z8fK3b .W4Efsd .W4Efsd:nth-child(2) span:first-child jsl span:nth-child(2)")
           if (activity !== null) {
             output.activity = activity.textContent.replace(/,/g, ".")
           } else {
             output.activity = "null"
           }
 
-          let company_address = elem.querySelector(".Z8fK3b .W4Efsd .W4Efsd:nth-child(1) span:nth-child(2)")
+          let company_address = elem.querySelector(".Z8fK3b .W4Efsd .W4Efsd:nth-child(2) span:nth-child(2) jsl span:nth-child(2)")
           if (company_address !== null) {
             output.address = company_address.textContent.replace(/,/g, ".")
           } else {
             output.address = "null"
           }
 
-          let phone = elem.querySelectorAll(".Z8fK3b .UaQhfb .W4Efsd .W4Efsd span span")
-
+          let phone = elem.querySelector(".Z8fK3b .W4Efsd .W4Efsd:nth-child(3) span:nth-child(2) jsl span:nth-child(2)")
           if (phone !== null) {
-
-            for (let i = 0; i < phone.length; i++) {
-              const element = phone[i].innerText;
-              if(element.indexOf("+") >= 0) {
-                output.phone = element
-              }
-            }
+            output.phone = phone.textContent.replace(/,/g, ".")
           } else {
             output.phone = "null"
           }
@@ -157,8 +151,6 @@ async function handleSingleQuery(page, item) {
       });
 
       await parseResultWriter.writeRecords(cardsData)
-      log.warn(cardsData)
-      log.debug('done single shortcard')
 
     }
     else {
@@ -194,14 +186,12 @@ async function handleSingleQuery(page, item) {
 
 
 async function autoScroll(page) {
-  log('start autoscrolling');
-  
   let endOfListSelector = await page.$('.PbZDve');
+
   if (!!endOfListSelector) {
     log('end selector')
     return true;
   }
-  
 
   let placesCards = await page.$$('.hfpxzc');
 
@@ -228,7 +218,6 @@ async function autoScroll(page) {
   await page.waitForNetworkIdle();
 
   await autoScroll(page)
-
 }
 
 

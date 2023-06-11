@@ -58,9 +58,9 @@ async function openSearchPage() {
     for (const item of searchNames) {
       log(`запит: ${counter}`)
 
-      await page.$eval('input', el => el.value = '');
+      await page.$eval('textarea', el => el.value = '');
 
-      await page.type('input', item); // Types slower, like a user , {delay: 189}
+      await page.type('textarea', item); // Types slower, like a user , {delay: 189}
       await page.keyboard.press('Enter');
       await page.waitForNavigation({
         waitUntil: ['networkidle2', 'domcontentloaded'],
