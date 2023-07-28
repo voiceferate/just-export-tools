@@ -112,7 +112,7 @@ async function handleSingleQuery(page, item) {
         document.querySelectorAll('.Nv2PK.THOPZb').forEach(function (elem) {
           const output = {}
 
-          output.name = elem.ariaLabel
+          output.name = elem.querySelector('.NrDZNb').textContent.replace(/,/g, ".")
 
           let activity = elem.querySelector(".Z8fK3b .W4Efsd .W4Efsd:nth-child(1) span:nth-child(1) span")
           if (activity !== null) {
