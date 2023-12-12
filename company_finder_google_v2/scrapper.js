@@ -14,6 +14,7 @@ const csvStringifier = createCsvStringifier({
         {id: 'address', title: 'address'},
         {id: 'phone', title: 'phone'},
         {id: 'site', title: 'site'},
+        {id: 'activity', title: 'activity'},
         // {id: 'altSite', title: 'altSite'},
     ]
   });
@@ -68,44 +69,39 @@ async function openSearchPage() {
       });
 
       try {
-        const card = await page.waitForSelector('.kp-wholepage', { timeout: 1000 })
+        const card = await page.waitForSelector('.TQc1id.IVvPP.Jb0Zif.yqK6Z', { timeout: 1000 })
         // await clickByText(`Сайт`);
         log.info("card finded ______________")
   
         let name = await page.evaluate(() => {
-          let link = document.querySelector('.kp-wholepage h2 span')
+          let link = document.querySelector('h2.qrShPb.pXs6bb span')
   
-          return (link.innerText)
+          return (link != null ? link.innerText : "no info")
         });
   
         let site = await page.evaluate(() => {
-          let links = document.querySelectorAll('a.ab_button')
+          let link = document.querySelector('.zhZ3gf a.mI8Pwc')
   
-          for (let index = 0; index < links.length; index++) {
-            if (links[index].innerText === "Cайт") {
-              return (links[index].href)
-            }
-          }
-        });
+          return link.href
+        })
+        
   
         let address = await page.evaluate(() => {
-          let links = document.querySelectorAll('a.fl')
+          let link = document.querySelector('.Z1hOCe .LrzXr')
   
-          for (let index = 0; index < links.length; index++) {
-            if (links[index].innerText === "Адреса") {
-              return (links[index].closest('span').parentNode.childNodes[1].innerHTML)
-            }
-          }
+          return (link != null ? link.innerText : "no info")
         });
   
         let phone = await page.evaluate(() => {
-          let links = document.querySelectorAll('a.fl')
+          let link = document.querySelector('.LrzXr.zdqRlf.kno-fv')
   
-          for (let index = 0; index < links.length; index++) {
-            if (links[index].innerText === "Телефон") {
-              return (links[index].closest('span').parentNode.childNodes[1].innerText)
-            }
-          }
+          return (link != null ? link.innerText : "no info")
+        });
+
+        let activity = await page.evaluate(() => {
+          let link = document.querySelector('.TpnEn .YhemCb')
+  
+          return (link != null ? link.innerText : "no info")
         });
   
   
@@ -122,6 +118,7 @@ async function openSearchPage() {
           address: delBr(address),
           phone: delBr(phone),
           site: delBr(site),
+          activity: delBr(activity),
           // altSite: '',
           query_string: item
         }]
@@ -131,6 +128,7 @@ async function openSearchPage() {
   
       } catch (error) {
         log.trace(`no card finded`)
+        log.error(error)
   
         let altSite = await page.evaluate((item) => {
           let links = document.querySelectorAll('.yuRUbf>a')
