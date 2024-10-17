@@ -69,95 +69,157 @@ async function openSearchPage() {
       });
 
       try {
-        const card = await page.waitForSelector('.TQc1id.IVvPP.Jb0Zif.yqK6Z', { timeout: 1000 })
-        // await clickByText(`Сайт`);
-        log.info("card finded ______________")
-  
-        let name = await page.evaluate(() => {
-          let link = document.querySelector('h2.qrShPb.pXs6bb span')
-  
-          return (link != null ? link.innerText : "no info")
-        });
-  
-        let site = await page.evaluate(() => {
-          let link = document.querySelector('.zhZ3gf a.mI8Pwc')
-  
-          return link.href
-        })
-        
-  
-        let address = await page.evaluate(() => {
-          let link = document.querySelector('.Z1hOCe .LrzXr')
-  
-          return (link != null ? link.innerText : "no info")
-        });
-  
-        let phone = await page.evaluate(() => {
-          let link = document.querySelector('.LrzXr.zdqRlf.kno-fv')
-  
-          return (link != null ? link.innerText : "no info")
-        });
+        // const card = await page.waitForSelector('h2.qrShPb.pXs6bb span', { timeout: 1200 })
+        const card = await page.waitForSelector('div', { timeout: 1200 })
 
-        let activity = await page.evaluate(() => {
-          let link = document.querySelector('.TpnEn .YhemCb')
+        if (await page.$('h2.qrShPb.pXs6bb span') !== null) {
+          log.info("standart card is finded ______________")
   
-          return (link != null ? link.innerText : "no info")
-        });
+          let name = await page.evaluate(() => {
+            let link = document.querySelector('h2.qrShPb.pXs6bb span')
+    
+            return (link != null ? link.innerText : "no info")
+          });
+    
+          let site = await page.evaluate(() => {
+            let link = document.querySelector('.QqG1Sd a.ab_button')
+    
+            return (link != null ? link.href : "no info")
+          })
+          
+    
+          let address = await page.evaluate(() => {
+            let link = document.querySelector('.Z1hOCe .LrzXr')
+    
+            return (link != null ? link.innerText : "no info")
+          });
+    
+          let phone = await page.evaluate(() => {
+            let link = document.querySelector('.LrzXr.zdqRlf.kno-fv')
+    
+            return (link != null ? link.innerText : "no info")
+          });
   
+          let activity = await page.evaluate(() => {
+            let link = document.querySelector('.wDYxhc .zloOqf.kpS1Ac.vk_gy')
+    
+            return (link != null ? link.innerText : "no info")
+          });
+    
+    
+          log.warn(site, address, phone)
+    
+          if (site === undefined) {site = ''}
+          if (address === undefined) {address = ''}
+          if (phone === undefined) {phone = ''}
+          if (name === undefined) {name = ''}
   
-        log.warn(site, address, phone)
-  
-        if (site === undefined) {site = ''}
-        if (address === undefined) {address = ''}
-        if (phone === undefined) {phone = ''}
-        if (name === undefined) {name = ''}
+          let currentString = [{
+            'line_number': counter,
+            company_name: delBr(name),
+            address: delBr(address),
+            phone: delBr(phone),
+            site: delBr(site),
+            activity: delBr(activity),
+            // altSite: '',
+            query_string: item
+          }]
+    
+          wstream.write(csvStringifier.stringifyRecords(currentString));
 
-        let currentString = [{
-          'line_number': counter,
-          company_name: delBr(name),
-          address: delBr(address),
-          phone: delBr(phone),
-          site: delBr(site),
-          activity: delBr(activity),
-          // altSite: '',
-          query_string: item
-        }]
+        // second type of card handling
+        } else if (await page.$('.PZPZlf.ssJ7i.xgAzOe') !== null) {
+          log.info("secondary card is finded ______________")
   
-        wstream.write(csvStringifier.stringifyRecords(currentString));
+          let name = await page.evaluate(() => {
+            let link = document.querySelector('.PZPZlf.ssJ7i.xgAzOe')
+    
+            return (link != null ? link.innerText : "no info")
+          });
+    
+          let site = await page.evaluate(() => {
+            let link = document.querySelector('.zhZ3gf  a.mI8Pwc')
+    
+            return (link != null ? link.href : "no info")
+          })
+          
+    
+          let address = await page.evaluate(() => {
+            let link = document.querySelector('.Z1hOCe .LrzXr')
+    
+            return (link != null ? link.innerText : "no info")
+          });
+    
+          let phone = await page.evaluate(() => {
+            let link = document.querySelector('.LrzXr.zdqRlf.kno-fv')
+    
+            return (link != null ? link.innerText : "no info")
+          });
   
+          let activity = await page.evaluate(() => {
+            let link = document.querySelector('.rjxHPb.PZPZlf br+span')
+    
+            return (link != null ? link.innerText : "no info")
+          });
+    
+    
+          log.warn(site, address, phone)
+    
+          if (site === undefined) {site = ''}
+          if (address === undefined) {address = ''}
+          if (phone === undefined) {phone = ''}
+          if (name === undefined) {name = ''}
   
-      } catch (error) {
-        log.trace(`no card finded`)
-        log.error(error)
-  
-        let altSite = await page.evaluate((item) => {
-          let links = document.querySelectorAll('.yuRUbf>a')
-  
-          for (let index = 0; index < links.length; index++) {
-              // console.log('item inside: ', item)
-            if (links[index].host.replace("www.", "").indexOf(item.toLowerCase().slice(0, 3)) !== -1) {
-              return altSite = links[index].href
-            } else {
-              return altSite = ''
+          let currentString = [{
+            'line_number': counter,
+            company_name: delBr(name),
+            address: delBr(address),
+            phone: delBr(phone),
+            site: delBr(site),
+            activity: delBr(activity),
+            // altSite: '',
+            query_string: item
+          }]
+    
+          wstream.write(csvStringifier.stringifyRecords(currentString));
+        } else {
+          log.trace(`no card finded`)
+    
+          let altSite = await page.evaluate((item) => {
+            let links = document.querySelectorAll('.yuRUbf>a')
+    
+            for (let index = 0; index < links.length; index++) {
+                // console.log('item inside: ', item)
+              if (links[index].host.replace("www.", "").indexOf(item.toLowerCase().slice(0, 3)) !== -1) {
+                return altSite = links[index].href
+              } else {
+                return altSite = ''
+              }
             }
+          }, item);
+    
+          if (!!altSite) {
+            log.debug('altSite: ', altSite)
           }
-        }, item);
   
-        if (!!altSite) {
-          log.debug('altSite: ', altSite)
+          let currentString = [{
+            'line_number': counter,
+            company_name: '',
+            address: '',
+            phone: '',
+            site: altSite,
+            activity: '',
+  
+            // altSite,
+            query_string: item
+          }]
+    
+          wstream.write(csvStringifier.stringifyRecords(currentString));
         }
 
-        let currentString = [{
-          'line_number': counter,
-          company_name: '',
-          address: '',
-          phone: '',
-          site: altSite,
-          // altSite,
-          query_string: item
-        }]
-  
-        wstream.write(csvStringifier.stringifyRecords(currentString));
+      } catch (error) {
+        log.error("error")
+        
       }
 
       log(`кінець запиту ${counter}: ${item}`)
